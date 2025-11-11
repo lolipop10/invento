@@ -1211,19 +1211,22 @@ def quality_control():
     stats_row = c.fetchone()
     
     # --- Vérification None pour stats_row ---
-    if stats_row is None:
-        stats_row = {'conformes': 0, 'non_conformes': 0, 'en_attente': 0, 'total': 0}
+if stats_row is not None:
+    stats_row = dict(stats_row)
+else:
+    stats_row = {'conformes': 0, 'non_conformes': 0, 'en_attente': 0, 'total': 0}
 
-    stats = {
-        'conformes': stats_row.get('conformes', 0) or 0,
-        'non_conformes': stats_row.get('non_conformes', 0) or 0,
-        'en_attente': stats_row.get('en_attente', 0) or 0,
-        'total': stats_row.get('total', 0) or 0
-    }
-    
-    stats['taux_conformite'] = (stats['conformes'] / stats['total'] * 100) if stats['total'] > 0 else 0
-    
-    conn.close()
+stats = {
+    'conformes': stats_row.get('conformes', 0) or 0,
+    'non_conformes': stats_row.get('non_conformes', 0) or 0,
+    'en_attente': stats_row.get('en_attente', 0) or 0,
+    'total': stats_row.get('total', 0) or 0
+}
+
+stats['taux_conformite'] = (stats['conformes'] / stats['total'] * 100) if stats['total'] > 0 else 0
+
+conn.close()
+
     
     return render_template('quality_control.html', 
                            lots=lots, 
