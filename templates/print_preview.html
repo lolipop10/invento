@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ config.titre }} - Impression</title>
+    
+    <style>
+        @media print {
+            @page {
+                size: A4 landscape;
+                margin: 15mm;
+            }
+            .no-print {
+                display: none !important;
+            }
+            body {
+                background: white !important;
+            }
+            .page-break {
+                page-break-after: always;
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .print-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        /* En-tête du document */
+        .document-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 20px;
+            margin-bottom: 25px;
+        }
+
+        .header-left {
+            flex: 1;
+        }
+
+        .company-logo {
+            max-height: 80px;
+            max-width: 200px;
+            margin-bottom: 10px;
+        }
+
+        .company-info h1 {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .company-info p {
+            margin: 3px 0;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .header-right {
+            text-align: right;
+        }
+
+        .document-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+
+        .document-date {
+            font-size: 14px;
+            color: #666;
+        }
+
+        /* Sections de signature */
+        .signatures-section {
+            margin: 30px 0;
+            page-break-inside: avoid;
+        }
+
+        .signatures-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #007bff;
+        }
+
+        .signature-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .signature-box {
+            border: 2px solid #dee2e6;
+            padding: 15px;
+            border-radius: 8px;
+            min-height: 120px;
+        }
+
+        .signature-role {
+            font-weight: bold;
+            color: #007bff;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        .signature-names {
+            margin-bottom: 10px;
+            min-height: 30px;
+        }
+
+        .signature-name {
+            color: #495057;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .signature-line {
+            border-top: 2px solid #495057;
+            margin-top: 30px;
+            padding-top: 6px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .signature-label {
+            font-size: 10px;
+            color: #6c757d;
+            text-transform: uppercase;
+        }
+
+        /* Numérotation du listing */
+        .listing-number {
+            text-align: center;
+            margin: 20px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            font-weight: bold;
+            color: #333;
+        }
+
+        /* Table d'inventaire */
+        .inventory-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+            font-size: 11px;
+        }
+
+        .inventory-table thead {
+            background: #343a40;
+            color: white;
+        }
+
+        .inventory-table th,
+        .inventory-table td {
+            padding: 10px;
+            text-align: left;
+            border: 1px solid #dee2e6;
+        }
+
+        .inventory-table th {
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 10px;
+        }
+
+        .inventory-table tbody tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .inventory-table tbody tr:hover {
+            background: #e9ecef;
+        }
+
+        .verification-ok {
+            background: #d4edda !important;
+            color: #155724;
+            font-weight: bold;
+        }
+
+        .verification-nok {
+            background: #f8d7da !important;
+            color: #721c24;
+            font-weight: bold;
+        }
+
+        /* Boutons d'action (masqués à l'impression) */
+        .action-buttons {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        /* Footer */
+        .document-footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #dee2e6;
+            text-align: center;
+            color: #6c757d;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Boutons d'action (non imprimables) -->
+    <div class="action-buttons no-print">
+        <button onclick="window.print()" class="btn btn-success">
+            <i class="fas fa-print"></i> Imprimer / Générer PDF
+        </button>
+        <a href="{{ url_for('print_config') }}" class="btn btn-primary">
+            <i class="fas fa-cog"></i> Configuration
+        </a>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Retour
+        </a>
+    </div>
+
+    <div class="print-container">
+        <!-- En-tête du document -->
+        <div class="document-header">
+            <div class="header-left">
+                {% if config.logo %}
+                <img src="{{ url_for('static', filename='uploads/' + config.logo) }}" alt="Logo" class="company-logo">
+                {% endif %}
+                <div class="company-info">
+                    <h1>{{ config.entreprise or company_name }}</h1>
+                    {% if config.division %}
+                    <p><strong>Division:</strong> {{ config.division }}</p>
+                    {% endif %}
+                    {% if config.magasin %}
+                    <p><strong>Magasin:</strong> {{ config.magasin }}</p>
+                    {% endif %}
+                    {% if config.zone %}
+                    <p><strong>Zone:</strong> {{ config.zone }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="document-title">{{ config.titre }}</div>
+                <div class="document-date">Date d'édition: {{ print_date }}</div>
+            </div>
+        </div>
+
+        <!-- Signatures DÉBUT -->
+        <div class="signatures-section">
+            <div class="signatures-title">
+                <i class="fas fa-signature"></i> Signatures et Validations
+            </div>
+
+            <!-- Équipe de comptage et Contrôleur -->
+            <div class="signature-grid">
+                <div class="signature-box">
+                    <div class="signature-role">Équipe de Comptage</div>
+                    <div class="signature-names">
+                        {% if config.equipe_comptage %}
+                            {% for membre in config.equipe_comptage.split('\n') %}
+                                {% if membre.strip() %}
+                                <div class="signature-name">{{ membre.strip() }}</div>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <div class="signature-name">_______________________</div>
+                        {% endif %}
+                    </div>
+                    <div class="signature-line">
+                        <span class="signature-label">Visa</span>
+                        <span class="signature-label">Date: __/__/____</span>
+                    </div>
+                </div>
+
+                <div class="signature-box">
+                    <div class="signature-role">Contrôleur</div>
+                    <div class="signature-names">
+                        <div class="signature-name">
+                            {{ config.controleur or '_______________________' }}
+                        </div>
+                    </div>
+                    <div class="signature-line">
+                        <span class="signature-label">Visa</span>
+                        <span class="signature-label">Date: __/__/____</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DU et Contrôleur de Gestion -->
+            <div class="signature-grid">
+                <div class="signature-box">
+                    <div class="signature-role">Directeur d'Unité (DU)</div>
+                    <div class="signature-names">
+                        <div class="signature-name">
+                            {{ config.du or '_______________________' }}
+                        </div>
+                    </div>
+                    <div class="signature-line">
+                        <span class="signature-label">Visa et Signature</span>
+                        <span class="signature-label">Date: __/__/____</span>
+                    </div>
+                </div>
+
+                <div class="signature-box">
+                    <div class="signature-role">Contrôleur de Gestion</div>
+                    <div class="signature-names">
+                        <div class="signature-name">
+                            {{ config.controleur_gestion or '_______________________' }}
+                        </div>
+                    </div>
+                    <div class="signature-line">
+                        <span class="signature-label">Visa et Signature</span>
+                        <span class="signature-label">Date: __/__/____</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Numérotation du listing -->
+        <div class="listing-number">
+            📋 LISTING D'INVENTAIRE - Total: {{ inventory_data|length }} article(s)
+        </div>
+
+        <!-- Table d'inventaire -->
+        <table class="inventory-table">
+            <thead>
+                <tr>
+                    <th style="width: 5%;">N°</th>
+                    <th style="width: 15%;">Lot</th>
+                    <th style="width: 15%;">Code Article</th>
+                    <th style="width: 10%;">Poids (kg)</th>
+                    <th style="width: 25%;">Remarque</th>
+                    <th style="width: 15%;">Date Scan</th>
+                    <th style="width: 10%;">Scanné par</th>
+                    <th style="width: 10%;">Vérif.</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in inventory_data %}
+                <tr class="{{ 'verification-ok' if item[6] == 'OK' else 'verification-nok' }}">
+                    <td style="text-align: center;"><strong>{{ loop.index }}</strong></td>
+                    <td><strong>{{ item[0] }}</strong></td>
+                    <td>{{ item[1] }}</td>
+                    <td style="text-align: right;">{{ "%.2f"|format(item[2] or 0) }}</td>
+                    <td>{{ item[3] or '-' }}</td>
+                    <td>{{ item[4][:19] if item[4] else '-' }}</td>
+                    <td>{{ item[5] or '-' }}</td>
+                    <td style="text-align: center; font-weight: bold;">
+                        {{ item[6] }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Signatures FIN -->
+        <div class="signatures-section">
+            <div class="signatures-title">
+                <i class="fas fa-signature"></i> Signatures de Validation
+            </div>
+
+            <!-- Équipe de comptage et Contrôleur -->
+            <div class="signature-grid">
+                <div class="signature-box">
+                    <div class="signature-role">Équipe de Comptage</div>
+                    <div class="signature-names">
+                        {% if config.equipe_comptage %}
+                            {% for membre in config.equipe_comptage.split('\n') %}
+                                {% if membre.strip() %}
+                                <div class="signature-name">{{ membre.strip() }}</div>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <div class="signature-name">_______________________</div>
+                        {% endif %}
+                    </div>
+                    <div class="signature-line">
+                        <span class="signature-label">Visa</span>
+                        <span class="signature-label">Date: __/__/____</span>
+                    </div>
+                </div>
+
+                <div class="signature-box">
+                    <div class="signature-role">Contrôleur</div>
+                    <div class="signature-names">
+                        <div class="signature-name">
+                            {{ config.controleur or '_______________________' }}
+                        </div>
+                    </div>
+                    <div class="signature-line">
+                        <span class="signature-label">Visa</span>
+                        <span class="signature-label">Date: __/__/____</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DU et Contrôleur de Gestion -->
+            <div class="signature-grid">
+                <div class="signature-box">
+                    <div class="signature-role">Directeur d'Unité (DU)</div>
+                    <div class="signature-names">
+                        <div class="signature-name">
+                            {{ config.du or '_______________________' }}
+                        </div>
+                    </div>
+                    <div class="signature-line">
+                        <span class="signature-label">Visa et Signature</span>
+                        <span class="signature-label">Date: __/__/____</span>
+                    </div>
+                </div>
+
+                <div class="signature-box">
+                    <div class="signature-role">Contrôleur de Gestion</div>
+                    <div class="signature-names">
+                        <div class="signature-name">
+                            {{ config.controleur_gestion or '_______________________' }}
+                        </div>
+                    </div>
+                    <div class="signature-line">
+                        <span class="signature-label">Visa et Signature</span>
+                        <span class="signature-label">Date: __/__/____</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="document-footer">
+            <p><strong>Total des articles inventoriés: {{ inventory_data|length }}</strong></p>
+            <p>Document généré le {{ print_date }} par {{ current_user.username }}</p>
+            <p>{{ config.entreprise or company_name }} - Document Confidentiel</p>
+        </div>
+    </div>
+
+    <!-- Font Awesome pour les icônes -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</body>
+</html>

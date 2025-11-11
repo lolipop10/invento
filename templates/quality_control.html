@@ -1,0 +1,544 @@
+{% extends "base.html" %}
+
+{% block title %}Contrôle Qualité - {{ company_name|default('Inventory Management') }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="fas fa-check-circle"></i> Contrôle Qualité</h2>
+    </div>
+</div>
+
+<!-- Statistiques -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card border-success">
+            <div class="card-body text-center">
+                <i class="fas fa-check-double fa-2x text-success mb-2"></i>
+                <h3 class="text-success">{{ stats.conformes }}</h3>
+                <p class="mb-0">Conformes</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-danger">
+            <div class="card-body text-center">
+                <i class="fas fa-times-circle fa-2x text-danger mb-2"></i>
+                <h3 class="text-danger">{{ stats.non_conformes }}</h3>
+                <p class="mb-0">Non Conformes</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-warning">
+            <div class="card-body text-center">
+                <i class="fas fa-clock fa-2x text-warning mb-2"></i>
+                <h3 class="text-warning">{{ stats.en_attente }}</h3>
+                <p class="mb-0">En Attente</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-info">
+            <div class="card-body text-center">
+                <i class="fas fa-percentage fa-2x text-info mb-2"></i>
+                <h3 class="text-info">{{ "%.1f"|format(stats.taux_conformite) }}%</h3>
+                <p class="mb-0">Taux Conformité</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtres et Actions -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-filter"></i> Filtres et Actions</h5>
+            </div>
+            <div class="card-body">
+                <form method="GET" action="{{ url_for('quality_control') }}" class="row g-3 mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Recherche Lot</label>
+                        <input type="text" name="search" class="form-control" 
+                               placeholder="Numéro de lot..." 
+                               value="{{ search_term or '' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Statut</label>
+                        <select name="statut" class="form-select">
+                            <option value="">Tous les statuts</option>
+                            <option value="CONFORME" {% if filter_statut == 'CONFORME' %}selected{% endif %}>Conforme</option>
+                            <option value="NON_CONFORME" {% if filter_statut == 'NON_CONFORME' %}selected{% endif %}>Non Conforme</option>
+                            <option value="EN_ATTENTE" {% if filter_statut == 'EN_ATTENTE' %}selected{% endif %}>En Attente</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Décision</label>
+                        <select name="decision" class="form-select">
+                            <option value="">Toutes les décisions</option>
+                            <option value="A_LIVRER" {% if filter_decision == 'A_LIVRER' %}selected{% endif %}>À Livrer</option>
+                            <option value="A_TRANSFORMER" {% if filter_decision == 'A_TRANSFORMER' %}selected{% endif %}>À Transformer</option>
+                            <option value="A_RECYCLER" {% if filter_decision == 'A_RECYCLER' %}selected{% endif %}>À Recycler</option>
+                            <option value="MAGASIN_NC" {% if filter_decision == 'MAGASIN_NC' %}selected{% endif %}>Magasin NC</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary me-2">
+                            <i class="fas fa-search"></i> Filtrer
+                        </button>
+                        <a href="{{ url_for('quality_control') }}" class="btn btn-secondary">
+                            <i class="fas fa-redo"></i> Réinitialiser
+                        </a>
+                    </div>
+                </form>
+
+                <!-- Actions par lot -->
+                <div class="row g-2">
+                    <div class="col-auto">
+                        <button type="button" class="btn btn-success" onclick="batchUpdate('CONFORME')">
+                            <i class="fas fa-check"></i> Marquer Conforme
+                        </button>
+                    </div>
+                    <div class="col-auto">
+                        <button type="button" class="btn btn-danger" onclick="batchUpdate('NON_CONFORME')">
+                            <i class="fas fa-times"></i> Marquer Non Conforme
+                        </button>
+                    </div>
+                    <div class="col-auto">
+                        <button type="button" class="btn btn-warning" onclick="batchUpdate('EN_ATTENTE')">
+                            <i class="fas fa-clock"></i> Remettre en Attente
+                        </button>
+                    </div>
+                    <div class="col-auto ms-auto">
+                        <a href="{{ url_for('quality_export') }}" class="btn btn-info">
+                            <i class="fas fa-file-excel"></i> Exporter
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tableau des lots -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-list"></i> Liste des Lots 
+                    <span class="badge bg-light text-dark">{{ lots|length }} résultat(s)</span>
+                </h5>
+                <div>
+                    <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)">
+                    <label for="selectAll" class="text-white ms-1">Tout sélectionner</label>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                {% if lots %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th width="40">
+                                    <input type="checkbox" id="headerCheckbox" onchange="toggleSelectAll(this)">
+                                </th>
+                                <th>Lot</th>
+                                <th>Code Article</th>
+                                <th>Poids (kg)</th>
+                                <th>Statut</th>
+                                <th>Décision</th>
+                                <th>Non-Conformité</th>
+                                <th>Contrôleur</th>
+                                <th>Date Contrôle</th>
+                                <th width="100">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for lot in lots %}
+                            <tr class="
+                                {% if lot.statut_qualite == 'CONFORME' %}table-success
+                                {% elif lot.statut_qualite == 'NON_CONFORME' %}table-danger
+                                {% else %}table-warning{% endif %}
+                            ">
+                                <td>
+                                    <input type="checkbox" class="lot-checkbox" value="{{ lot.lot }}">
+                                </td>
+                                <td><strong>{{ lot.lot }}</strong></td>
+                                <td>{{ lot.code_article or '-' }}</td>
+                                <td>{{ "%.2f"|format(lot.poids_physique or 0) }}</td>
+                                <td>
+                                    {% if lot.statut_qualite == 'CONFORME' %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check"></i> Conforme
+                                        </span>
+                                    {% elif lot.statut_qualite == 'NON_CONFORME' %}
+                                        <span class="badge bg-danger">
+                                            <i class="fas fa-times"></i> Non Conforme
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-warning">
+                                            <i class="fas fa-clock"></i> En Attente
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if lot.decision_finale %}
+                                        {% if lot.decision_finale == 'A_LIVRER' %}
+                                            <span class="badge bg-primary">À Livrer</span>
+                                        {% elif lot.decision_finale == 'A_TRANSFORMER' %}
+                                            <span class="badge bg-info">À Transformer</span>
+                                        {% elif lot.decision_finale == 'A_RECYCLER' %}
+                                            <span class="badge bg-secondary">À Recycler</span>
+                                        {% elif lot.decision_finale == 'MAGASIN_NC' %}
+                                            <span class="badge bg-dark">Magasin NC</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if lot.non_conformite %}
+                                        <span class="text-truncate d-inline-block" style="max-width: 200px;" 
+                                              title="{{ lot.non_conformite }}">
+                                            {{ lot.non_conformite }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ lot.controleur_nom or '-' }}</td>
+                                <td>
+                                    {% if lot.date_controle %}
+                                        {{ lot.date_controle[:19] }}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary" 
+                                            onclick="openQualityModal('{{ lot.lot }}', '{{ lot.statut_qualite }}', '{{ lot.non_conformite or '' }}', '{{ lot.decision_finale or '' }}')">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">Aucun lot trouvé avec les critères de recherche.</p>
+                    <a href="{{ url_for('quality_control') }}" class="btn btn-primary">
+                        <i class="fas fa-redo"></i> Réinitialiser les filtres
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de contrôle qualité -->
+<div class="modal fade" id="qualityModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('save_quality_control') }}">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-check-circle"></i> Contrôle Qualité - Lot <span id="modalLotNumber"></span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="lot" id="modalLot">
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Statut Qualité *</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="statut_qualite" value="CONFORME" id="statut_conforme" required>
+                            <label class="btn btn-outline-success" for="statut_conforme">
+                                <i class="fas fa-check"></i> Conforme
+                            </label>
+                            
+                            <input type="radio" class="btn-check" name="statut_qualite" value="NON_CONFORME" id="statut_non_conforme" required>
+                            <label class="btn btn-outline-danger" for="statut_non_conforme">
+                                <i class="fas fa-times"></i> Non Conforme
+                            </label>
+                            
+                            <input type="radio" class="btn-check" name="statut_qualite" value="EN_ATTENTE" id="statut_attente" required>
+                            <label class="btn btn-outline-warning" for="statut_attente">
+                                <i class="fas fa-clock"></i> En Attente
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3" id="nonConformiteSection" style="display: none;">
+                        <label for="nonConformite" class="form-label fw-bold">
+                            Description Non-Conformité *
+                        </label>
+                        <textarea class="form-control" name="non_conformite" id="nonConformite" rows="3"
+                                  placeholder="Décrivez la non-conformité détectée..."></textarea>
+                        <small class="text-danger" id="nonConformiteError" style="display: none;">
+                            La description est obligatoire pour un statut non conforme.
+                        </small>
+                    </div>
+
+                    <div class="mb-3" id="decisionSection" style="display: none;">
+                        <label class="form-label fw-bold">Décision Finale</label>
+                        <select class="form-select" name="decision_finale" id="decisionFinale">
+                            <option value="">-- Sélectionner une décision --</option>
+                            <option value="A_LIVRER">À Livrer</option>
+                            <option value="A_TRANSFORMER">À Transformer</option>
+                            <option value="A_RECYCLER">À Recycler</option>
+                            <option value="MAGASIN_NC">Magasin NC</option>
+                        </select>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Note:</strong> Toutes les modifications sont enregistrées dans l'historique.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Annuler
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Enregistrer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Form caché pour la mise à jour par lot -->
+<form id="batchUpdateForm" method="POST" action="{{ url_for('quality_batch_update') }}" style="display: none;">
+    <input type="hidden" name="statut" id="batchStatut">
+</form>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Gestion de la modale de contrôle qualité
+function openQualityModal(lot, statut, nonConformite, decision) {
+    document.getElementById('modalLot').value = lot;
+    document.getElementById('modalLotNumber').textContent = lot;
+    
+    // Réinitialiser le formulaire
+    document.querySelectorAll('input[name="statut_qualite"]').forEach(radio => {
+        radio.checked = false;
+    });
+    document.getElementById('nonConformite').value = nonConformite || '';
+    document.getElementById('decisionFinale').value = decision || '';
+    
+    // Cocher le bon statut
+    if (statut === 'CONFORME') {
+        document.getElementById('statut_conforme').checked = true;
+        toggleNonConformiteSection(false);
+    } else if (statut === 'NON_CONFORME') {
+        document.getElementById('statut_non_conforme').checked = true;
+        toggleNonConformiteSection(true);
+    } else {
+        document.getElementById('statut_attente').checked = true;
+        toggleNonConformiteSection(false);
+    }
+    
+    // Ouvrir la modale
+    const modal = new bootstrap.Modal(document.getElementById('qualityModal'));
+    modal.show();
+}
+
+// Afficher/masquer la section non-conformité
+function toggleNonConformiteSection(show) {
+    const section = document.getElementById('nonConformiteSection');
+    const decisionSection = document.getElementById('decisionSection');
+    const nonConformiteField = document.getElementById('nonConformite');
+    
+    section.style.display = show ? 'block' : 'none';
+    decisionSection.style.display = show ? 'block' : 'none';
+    
+    if (show) {
+        nonConformiteField.required = true;
+    } else {
+        nonConformiteField.required = false;
+        nonConformiteField.value = '';
+    }
+}
+
+// Événements sur les boutons radio
+document.querySelectorAll('input[name="statut_qualite"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        toggleNonConformiteSection(this.value === 'NON_CONFORME');
+    });
+});
+
+// Sélection de tous les lots
+function toggleSelectAll(checkbox) {
+    const checkboxes = document.querySelectorAll('.lot-checkbox');
+    checkboxes.forEach(cb => cb.checked = checkbox.checked);
+}
+
+// Mise à jour par lot
+function batchUpdate(statut) {
+    const selectedLots = Array.from(document.querySelectorAll('.lot-checkbox:checked'))
+        .map(cb => cb.value);
+    
+    if (selectedLots.length === 0) {
+        alert('Veuillez sélectionner au moins un lot.');
+        return;
+    }
+    
+    const statutText = {
+        'CONFORME': 'conforme',
+        'NON_CONFORME': 'non conforme',
+        'EN_ATTENTE': 'en attente'
+    };
+    
+    if (!confirm(`Voulez-vous marquer ${selectedLots.length} lot(s) comme ${statutText[statut]} ?`)) {
+        return;
+    }
+    
+    const form = document.getElementById('batchUpdateForm');
+    document.getElementById('batchStatut').value = statut;
+    
+    // Ajouter les lots au formulaire
+    selectedLots.forEach(lot => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'lots';
+        input.value = lot;
+        form.appendChild(input);
+    });
+    
+    form.submit();
+}
+
+// Validation du formulaire
+document.querySelector('#qualityModal form').addEventListener('submit', function(e) {
+    const statut = document.querySelector('input[name="statut_qualite"]:checked');
+    const nonConformite = document.getElementById('nonConformite').value.trim();
+    
+    if (statut && statut.value === 'NON_CONFORME' && !nonConformite) {
+        e.preventDefault();
+        document.getElementById('nonConformiteError').style.display = 'block';
+        document.getElementById('nonConformite').focus();
+        return false;
+    }
+});
+</script>
+<!-- Ajoutez ce code AVANT la fin du template quality_control.html -->
+
+<!-- Modal pour le mot de passe d'export qualité -->
+<div class="modal fade" id="qualityExportPasswordModal" tabindex="-1" aria-labelledby="qualityExportPasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="qualityExportPasswordModalLabel">
+                    <i class="fas fa-lock"></i> Authentification Export Qualité
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> Pour des raisons de sécurité, veuillez entrer le mot de passe d'export.
+                </div>
+                <div class="mb-3">
+                    <label for="qualityExportPasswordInput" class="form-label">Mot de passe</label>
+                    <input type="password" class="form-control" id="qualityExportPasswordInput" placeholder="Entrez le mot de passe">
+                </div>
+                <div id="qualityExportPasswordError" class="alert alert-danger d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Annuler
+                </button>
+                <button type="button" class="btn btn-primary" id="verifyQualityExportPasswordBtn">
+                    <i class="fas fa-check"></i> Valider
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let qualityExportPasswordModal;
+
+document.addEventListener('DOMContentLoaded', function() {
+    qualityExportPasswordModal = new bootstrap.Modal(document.getElementById('qualityExportPasswordModal'));
+    
+    // Intercepter le clic sur le lien d'export qualité
+    const exportLink = document.querySelector('a[href="{{ url_for("quality_export") }}"]');
+    if (exportLink) {
+        exportLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            qualityExportPasswordModal.show();
+        });
+    }
+    
+    // Vérification du mot de passe
+    document.getElementById('verifyQualityExportPasswordBtn').addEventListener('click', async function() {
+        const password = document.getElementById('qualityExportPasswordInput').value;
+        const errorDiv = document.getElementById('qualityExportPasswordError');
+        const btn = this;
+        
+        if (!password) {
+            errorDiv.textContent = 'Veuillez entrer un mot de passe';
+            errorDiv.classList.remove('d-none');
+            return;
+        }
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Vérification...';
+        
+        try {
+            const response = await fetch('{{ url_for("verify_quality_export_password") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ password: password })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                errorDiv.classList.add('d-none');
+                qualityExportPasswordModal.hide();
+                // Rediriger vers l'export
+                window.location.href = '{{ url_for("quality_export") }}';
+            } else {
+                errorDiv.textContent = data.message || 'Mot de passe incorrect';
+                errorDiv.classList.remove('d-none');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check"></i> Valider';
+            }
+        } catch (error) {
+            errorDiv.textContent = 'Erreur de connexion. Veuillez réessayer.';
+            errorDiv.classList.remove('d-none');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check"></i> Valider';
+        }
+    });
+    
+    // Réinitialiser le formulaire quand la modal se ferme
+    document.getElementById('qualityExportPasswordModal').addEventListener('hidden.bs.modal', function() {
+        document.getElementById('qualityExportPasswordInput').value = '';
+        document.getElementById('qualityExportPasswordError').classList.add('d-none');
+        document.getElementById('verifyQualityExportPasswordBtn').disabled = false;
+        document.getElementById('verifyQualityExportPasswordBtn').innerHTML = '<i class="fas fa-check"></i> Valider';
+    });
+    
+    // Permettre la validation avec la touche Entrée
+    document.getElementById('qualityExportPasswordInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            document.getElementById('verifyQualityExportPasswordBtn').click();
+        }
+    });
+});
+</script>
+{% endblock %}

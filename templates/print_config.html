@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}Configuration Impression - {{ company_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">
+                <i class="fas fa-print"></i> Configuration du Document d'Inventaire
+            </h2>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5><i class="fas fa-file-alt"></i> Informations du Document</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        <!-- Logo de l'entreprise -->
+                        <div class="mb-4">
+                            <label for="print_logo" class="form-label">
+                                <i class="fas fa-image"></i> Logo de l'Entreprise
+                            </label>
+                            {% if config.logo %}
+                            <div class="mb-2">
+                                <img src="{{ url_for('static', filename='uploads/' + config.logo) }}" 
+                                     alt="Logo actuel" 
+                                     style="max-height: 80px; border: 1px solid #dee2e6; padding: 5px; border-radius: 5px;">
+                                <p class="small text-muted mt-1">Logo actuel</p>
+                            </div>
+                            {% endif %}
+                            <input type="file" class="form-control" id="print_logo" name="print_logo" 
+                                   accept="image/png,image/jpeg,image/jpg,image/gif">
+                            <div class="form-text">Formats acceptés : PNG, JPG, JPEG, GIF (max 2 MB)</div>
+                        </div>
+
+                        <hr>
+
+                        <!-- Titre du document -->
+                        <div class="mb-3">
+                            <label for="titre" class="form-label">
+                                <i class="fas fa-heading"></i> Titre du Document
+                            </label>
+                            <input type="text" class="form-control" id="titre" name="titre" 
+                                   value="{{ config.titre }}" 
+                                   placeholder="Ex: Inventaire Fin 2025"
+                                   required>
+                        </div>
+
+                        <hr>
+
+                        <!-- Informations Entreprise -->
+                        <h5 class="mb-3"><i class="fas fa-building"></i> Informations Entreprise</h5>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="entreprise" class="form-label">Entreprise</label>
+                                <input type="text" class="form-control" id="entreprise" name="entreprise" 
+                                       value="{{ config.entreprise }}" 
+                                       placeholder="Nom de l'entreprise"
+                                       required>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="division" class="form-label">Division</label>
+                                <input type="text" class="form-control" id="division" name="division" 
+                                       value="{{ config.division }}" 
+                                       placeholder="Division / Département">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="magasin" class="form-label">Magasin</label>
+                                <input type="text" class="form-control" id="magasin" name="magasin" 
+                                       value="{{ config.magasin }}" 
+                                       placeholder="Nom du magasin">
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="zone" class="form-label">Zone</label>
+                                <input type="text" class="form-control" id="zone" name="zone" 
+                                       value="{{ config.zone }}" 
+                                       placeholder="Zone d'inventaire">
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <!-- Équipe d'Inventaire -->
+                        <h5 class="mb-3"><i class="fas fa-users"></i> Équipe d'Inventaire</h5>
+                        
+                        <div class="mb-3">
+                            <label for="equipe_comptage" class="form-label">
+                                <i class="fas fa-users-cog"></i> Équipe de Comptage
+                            </label>
+                            <textarea class="form-control" id="equipe_comptage" name="equipe_comptage" 
+                                      rows="3" 
+                                      placeholder="Noms des membres de l'équipe (un par ligne)">{{ config.equipe_comptage }}</textarea>
+                            <div class="form-text">Entrez un nom par ligne</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="controleur" class="form-label">
+                                <i class="fas fa-user-check"></i> Contrôleur
+                            </label>
+                            <input type="text" class="form-control" id="controleur" name="controleur" 
+                                   value="{{ config.controleur }}" 
+                                   placeholder="Nom complet du contrôleur">
+                        </div>
+
+                        <hr>
+
+                        <!-- Responsables / Signatures -->
+                        <h5 class="mb-3"><i class="fas fa-signature"></i> Responsables & Signatures</h5>
+                        
+                        <div class="mb-3">
+                            <label for="du" class="form-label">
+                                <i class="fas fa-user-tie"></i> Directeur d'Unité (DU)
+                            </label>
+                            <input type="text" class="form-control" id="du" name="du" 
+                                   value="{{ config.du }}" 
+                                   placeholder="Nom complet du DU">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="controleur_gestion" class="form-label">
+                                <i class="fas fa-user-shield"></i> Contrôleur de Gestion
+                            </label>
+                            <input type="text" class="form-control" id="controleur_gestion" name="controleur_gestion" 
+                                   value="{{ config.controleur_gestion }}" 
+                                   placeholder="Nom complet du contrôleur de gestion">
+                        </div>
+
+                        <hr>
+
+                        <!-- Boutons d'action -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Retour
+                            </a>
+                            <div>
+                                <a href="{{ url_for('print_preview') }}" class="btn btn-info me-2" target="_blank">
+                                    <i class="fas fa-eye"></i> Prévisualiser
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Enregistrer
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panneau d'aide -->
+        <div class="col-lg-4">
+            <div class="card border-info">
+                <div class="card-header bg-info text-white">
+                    <h5><i class="fas fa-info-circle"></i> Informations</h5>
+                </div>
+                <div class="card-body">
+                    <p class="small">
+                        <strong>Configuration d'impression :</strong><br>
+                        Ces informations seront utilisées pour générer le document d'inventaire imprimable.
+                    </p>
+                    <hr>
+                    <p class="small mb-2"><strong>Le document contiendra :</strong></p>
+                    <ul class="small">
+                        <li>Logo de l'entreprise</li>
+                        <li>Titre et informations générales</li>
+                        <li>Liste complète de l'inventaire</li>
+                        <li>Zones de signature pour tous les intervenants</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card border-success mt-3">
+                <div class="card-header bg-success text-white">
+                    <h5><i class="fas fa-lightbulb"></i> Conseils</h5>
+                </div>
+                <div class="card-body small">
+                    <ul class="mb-0">
+                        <li>Vérifiez toutes les informations avant d'imprimer</li>
+                        <li>Utilisez la prévisualisation pour vérifier le rendu</li>
+                        <li>Les configurations sont sauvegardées pour les prochaines impressions</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
