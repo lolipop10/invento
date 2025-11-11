@@ -44,8 +44,13 @@
                         <label for="barcode" class="form-label">
                             <i class="fas fa-barcode"></i> Code-barres (28 caractères)
                         </label>
-                        <input type="text" class="form-control scanner-input" id="barcode" name="barcode" 
-                               placeholder="Scannez ou saisissez le code-barres" autofocus required>
+                        <input type="text" class="form-control scanner-input" id="barcode" name="barcode"
+                        placeholder="Scannez ou saisissez le code-barres"
+                        autofocus required
+                        enterkeyhint="enter"
+                        inputmode="none"
+                        autocomplete="off">
+
                         <div class="form-text">Format: 28 caractères - Code Article (pos 8-18), Lot (pos 18-28)</div>
                     </div>
                     
