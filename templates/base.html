@@ -129,6 +129,15 @@
                                 <i class="fas fa-cog"></i> Paramètres
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
+                            <!-- NOUVEAU -->
+                            <li><a class="dropdown-item" href="{{ url_for('mb52_management') }}">
+                                <i class="fas fa-database"></i> Stock MB52
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('reconciliation') }}">
+                                <i class="fas fa-balance-scale"></i> Rapprochement
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <!-- FIN NOUVEAU -->
                             <li><a class="dropdown-item" href="{{ url_for('reset_inventory') }}">
                                 <i class="fas fa-trash-restore"></i> Réinitialiser
                             </a></li>

@@ -1,0 +1,301 @@
+<!-- templates/reconciliation.html -->
+{% extends "base.html" %}
+
+{% block title %}Rapprochement Physique vs SAP - {{ company_name|default('Inventory Management') }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <h2><i class="fas fa-balance-scale"></i> Rapprochement Physique vs SAP</h2>
+            <button class="btn btn-success" id="exportReconciliationBtn">
+                <i class="fas fa-download"></i> Exporter vers Excel
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="row mb-4">
+        <div class="col-md-2">
+            <div class="card text-center border-primary">
+                <div class="card-body">
+                    <i class="fas fa-boxes fa-2x text-primary mb-2"></i>
+                    <h4>{{ stats['lots_physiques'] or 0 }}</h4>
+                    <small>Lots Physiques</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-center border-info">
+                <div class="card-body">
+                    <i class="fas fa-database fa-2x text-info mb-2"></i>
+                    <h4>{{ stats['lots_systeme'] or 0 }}</h4>
+                    <small>Lots Système</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-center border-success">
+                <div class="card-body">
+                    <i class="fas fa-check-double fa-2x text-success mb-2"></i>
+                    <h4>{{ stats['lots_communs'] or 0 }}</h4>
+                    <small>Correspondances</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-center border-success">
+                <div class="card-body">
+                    <i class="fas fa-thumbs-up fa-2x text-success mb-2"></i>
+                    <h4>{{ stats['conformes'] or 0 }}</h4>
+                    <small>Conformes (±0.1kg)</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-center border-warning">
+                <div class="card-body">
+                    <i class="fas fa-exclamation-triangle fa-2x text-warning mb-2"></i>
+                    <h4>{{ stats['ecarts'] or 0 }}</h4>
+                    <small>Écarts</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-center border-danger">
+                <div class="card-body">
+                    <i class="fas fa-question-circle fa-2x text-danger mb-2"></i>
+                    <h4>{{ (stats['physique_seul'] or 0) + (stats['systeme_seul'] or 0) }}</h4>
+                    <small>Manquants</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Filtrer par statut</label>
+                    <select name="status" class="form-select" onchange="this.form.submit()">
+                        <option value="all" {% if filter_status == 'all' %}selected{% endif %}>Tous</option>
+                        <option value="conforme" {% if filter_status == 'conforme' %}selected{% endif %}>✓ Conformes</option>
+                        <option value="ecart" {% if filter_status == 'ecart' %}selected{% endif %}>⚠ Écarts</option>
+                        <option value="physique_seul" {% if filter_status == 'physique_seul' %}selected{% endif %}>📦 Physique seul</option>
+                        <option value="systeme_seul" {% if filter_status == 'systeme_seul' %}selected{% endif %}>💾 Système seul</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Rechercher un lot</label>
+                    <input type="text" class="form-control" name="search" value="{{ search }}" 
+                           placeholder="Numéro de lot...">
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-filter"></i> Filtrer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Résultats -->
+    <div class="card">
+        <div class="card-header">
+            <h5><i class="fas fa-list"></i> Résultats du Rapprochement ({{ data|length }} lots)</h5>
+        </div>
+        <div class="card-body">
+            {% if data %}
+            <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Lot</th>
+                            <th>Code Phys.</th>
+                            <th>Code Syst.</th>
+                            <th>Poids Physique</th>
+                            <th>Poids Système</th>
+                            <th>Écart (kg)</th>
+                            <th>Écart (%)</th>
+                            <th>Statut</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in data %}
+                        {% set ecart_abs = row['ecart_poids']|abs if row['ecart_poids'] else 999999 %}
+                        {% set poids_sys = row['poids_systeme'] or 1 %}
+                        {% set ecart_pct = (row['ecart_poids'] / poids_sys * 100)|abs if row['ecart_poids'] and poids_sys else 0 %}
+                        
+                        <tr class="
+                            {% if row['statut_presence'] == 'PHYSIQUE_SEUL' %}table-warning
+                            {% elif row['statut_presence'] == 'SYSTEME_SEUL' %}table-info
+                            {% elif ecart_abs <= 0.1 %}table-success
+                            {% else %}table-danger
+                            {% endif %}
+                        ">
+                            <td><strong>{{ row['lot'] }}</strong></td>
+                            <td>{{ row['code_physique'] or '-' }}</td>
+                            <td>{{ row['code_systeme'] or '-' }}</td>
+                            <td>
+                                {% if row['poids_physique'] %}
+                                {{ "%.2f"|format(row['poids_physique']) }}
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if row['poids_systeme'] %}
+                                {{ "%.2f"|format(row['poids_systeme']) }}
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if row['ecart_poids'] is not none %}
+                                    {% if row['ecart_poids'] > 0 %}
+                                    <span class="text-danger">+{{ "%.2f"|format(row['ecart_poids']) }}</span>
+                                    {% elif row['ecart_poids'] < 0 %}
+                                    <span class="text-primary">{{ "%.2f"|format(row['ecart_poids']) }}</span>
+                                    {% else %}
+                                    <span class="text-success">0.00</span>
+                                    {% endif %}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if row['ecart_poids'] is not none and poids_sys %}
+                                    {% if ecart_pct > 5 %}
+                                    <span class="badge bg-danger">{{ "%.1f"|format(ecart_pct) }}%</span>
+                                    {% elif ecart_pct > 1 %}
+                                    <span class="badge bg-warning text-dark">{{ "%.1f"|format(ecart_pct) }}%</span>
+                                    {% else %}
+                                    <span class="badge bg-success">{{ "%.1f"|format(ecart_pct) }}%</span>
+                                    {% endif %}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if row['statut_presence'] == 'PHYSIQUE_SEUL' %}
+                                <span class="badge bg-warning text-dark">📦 Physique seul</span>
+                                {% elif row['statut_presence'] == 'SYSTEME_SEUL' %}
+                                <span class="badge bg-info">💾 Système seul</span>
+                                {% elif ecart_abs <= 0.1 %}
+                                <span class="badge bg-success">✓ Conforme</span>
+                                {% else %}
+                                <span class="badge bg-danger">⚠ Écart</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center text-muted py-4">
+                <i class="fas fa-inbox fa-3x mb-3"></i>
+                <p>Aucun résultat trouvé</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal Export Password -->
+<div class="modal fade" id="exportReconciliationModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-lock"></i> Authentification Export Rapprochement
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> Entrez le mot de passe d'export pour télécharger le rapprochement.
+                </div>
+                <input type="password" class="form-control" id="reconciliationPasswordInput" 
+                       placeholder="Mot de passe d'export">
+                <div id="reconciliationPasswordError" class="alert alert-danger mt-3 d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-success" id="verifyReconciliationPasswordBtn">
+                    <i class="fas fa-download"></i> Exporter
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form id="exportReconciliationForm" method="GET" action="{{ url_for('export_reconciliation') }}" style="display: none;"></form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let exportReconciliationModal;
+
+document.addEventListener('DOMContentLoaded', function() {
+    exportReconciliationModal = new bootstrap.Modal(document.getElementById('exportReconciliationModal'));
+    
+    document.getElementById('exportReconciliationBtn').addEventListener('click', function(e) {
+        e.preventDefault();
+        exportReconciliationModal.show();
+        setTimeout(() => {
+            document.getElementById('reconciliationPasswordInput').focus();
+        }, 500);
+    });
+    
+    document.getElementById('verifyReconciliationPasswordBtn').addEventListener('click', async function() {
+        const password = document.getElementById('reconciliationPasswordInput').value;
+        const errorDiv = document.getElementById('reconciliationPasswordError');
+        const btn = this;
+        
+        if (!password) {
+            errorDiv.textContent = 'Veuillez entrer un mot de passe';
+            errorDiv.classList.remove('d-none');
+            return;
+        }
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Vérification...';
+        errorDiv.classList.add('d-none');
+        
+        try {
+            const response = await fetch('{{ url_for("verify_reconciliation_export_password") }}', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ password: password })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                exportReconciliationModal.hide();
+                document.getElementById('exportReconciliationForm').submit();
+            } else {
+                errorDiv.textContent = data.message || 'Mot de passe incorrect';
+                errorDiv.classList.remove('d-none');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-download"></i> Exporter';
+            }
+        } catch (error) {
+            errorDiv.textContent = 'Erreur de connexion';
+            errorDiv.classList.remove('d-none');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-download"></i> Exporter';
+        }
+    });
+    
+    document.getElementById('reconciliationPasswordInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            document.getElementById('verifyReconciliationPasswordBtn').click();
+        }
+    });
+});
+</script>
+{% endblock %}

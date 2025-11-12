@@ -1,0 +1,109 @@
+<!-- templates/mb52_import.html -->
+{% extends "base.html" %}
+
+{% block title %}Import MB52 - {{ company_name|default('Inventory Management') }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">
+                <i class="fas fa-file-excel"></i> Import Stock Système (MB52)
+            </h2>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5><i class="fas fa-upload"></i> Importer un fichier MB52</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Format requis:</strong> Le fichier Excel doit contenir au minimum les colonnes <code>Lot</code> et <code>Poids</code>. 
+                            La colonne <code>Code Article</code> est optionnelle.
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="mb52_file" class="form-label">
+                                <i class="fas fa-file"></i> Fichier Excel MB52
+                            </label>
+                            <input type="file" class="form-control" id="mb52_file" name="mb52_file" 
+                                   accept=".xlsx,.xls" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-cog"></i> Action d'import
+                            </label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="import_action" 
+                                       id="replace" value="replace" checked>
+                                <label class="form-check-label" for="replace">
+                                    <strong>Remplacer</strong> - Désactive l'ancien stock et importe le nouveau
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="import_action" 
+                                       id="merge" value="merge">
+                                <label class="form-check-label" for="merge">
+                                    <strong>Fusionner</strong> - Ajoute au stock existant (met à jour les doublons)
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-upload"></i> Importer le fichier
+                            </button>
+                            <a href="{{ url_for('mb52_management') }}" class="btn btn-secondary">
+                                <i class="fas fa-list"></i> Voir le stock actuel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-info">
+                <div class="card-header bg-info text-white">
+                    <h5><i class="fas fa-chart-bar"></i> Statistiques MB52</h5>
+                </div>
+                <div class="card-body">
+                    {% if stats %}
+                    <p><strong>Total lots:</strong> {{ stats['total'] or 0 }}</p>
+                    <p><strong>Lots actifs:</strong> {{ stats['actifs'] or 0 }}</p>
+                    <p><strong>Dernier import:</strong><br>
+                        {% if stats['derniere_import'] %}
+                            {{ stats['derniere_import'][:19] }}
+                        {% else %}
+                            Aucun import
+                        {% endif %}
+                    </p>
+                    {% else %}
+                    <p class="text-muted">Aucune donnée MB52 disponible</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card mt-3 border-warning">
+                <div class="card-header bg-warning">
+                    <h5><i class="fas fa-lightbulb"></i> Conseils</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="small mb-0">
+                        <li>Vérifiez que votre fichier contient les colonnes requises</li>
+                        <li>Les numéros de lot seront normalisés (10 chiffres)</li>
+                        <li>Les doublons seront mis à jour automatiquement</li>
+                        <li>Cette opération peut prendre quelques minutes pour de gros fichiers</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
