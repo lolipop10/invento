@@ -593,7 +593,8 @@ def scan():
                 # Récupérer le poids système si non fourni
                 if poids is None or poids == 0:
                     poids_systeme = get_mb52_poids(lot)
-                    
+                    if poids_systeme:
+                        poids = poids_systeme                    
                 
                 conn = None
                 try:
