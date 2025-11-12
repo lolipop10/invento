@@ -594,7 +594,8 @@ def scan():
                 if poids is None or poids == 0:
                     poids_systeme = get_mb52_poids(lot)
                     if poids_systeme:
-                        poids = poids_systeme                    
+                        poids = poids_systeme 
+                        remarques.append('Poids auto-rempli depuis MB52')
                 
                 conn = None
                 try:
