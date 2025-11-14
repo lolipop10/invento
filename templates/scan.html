@@ -23,12 +23,7 @@
                     </div>
                     <div class="col-3">
                         <small><strong>Poids:</strong></small><br>
-                        {% if last_scan.poids_physique is not none %}
                         {{ "%.1f"|format(last_scan.poids_physique) }} kg
-                        {% else %}
-    -
-                        {% endif %}
-                        
                     </div>
                     <div class="col-3">
                         <small><strong>Heure:</strong></small><br>
@@ -190,6 +185,18 @@
                         <button type="button" class="btn btn-info btn-lg" id="btn-switch-camera" style="display: none;">
                             <i class="fas fa-sync-alt"></i> Changer
                         </button>
+                        <button type="button" class="btn btn-secondary btn-lg" id="btn-zoom-in" style="display: none;">
+                            <i class="fas fa-search-plus"></i>
+                        </button>
+                    </div>
+
+                    <!-- Zoom Control -->
+                    <div id="zoom-control" class="mb-3" style="display: none;">
+                        <label for="zoom-range" class="form-label">
+                            <i class="fas fa-search"></i> Zoom: <span id="zoom-level">1.0</span>x
+                        </label>
+                        <input type="range" class="form-range" id="zoom-range" min="1" max="5" step="0.1" value="1">
+                        <small class="text-muted">Ajustez le zoom pour les petits codes-barres</small>
                     </div>
 
                     <!-- Camera Settings -->
@@ -197,7 +204,7 @@
                         <div class="card-body">
                             <h6 class="card-title"><i class="fas fa-cog"></i> Paramètres</h6>
                             <div class="row">
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <div class="form-check form-switch">
                                         <input class="form-check-input" type="checkbox" id="continuous-scan" checked>
                                         <label class="form-check-label" for="continuous-scan">
@@ -205,7 +212,7 @@
                                         </label>
                                     </div>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <div class="form-check form-switch">
                                         <input class="form-check-input" type="checkbox" id="auto-weight" checked>
                                         <label class="form-check-label" for="auto-weight">
@@ -213,7 +220,7 @@
                                         </label>
                                     </div>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <div class="form-check form-switch">
                                         <input class="form-check-input" type="checkbox" id="sound-feedback" checked>
                                         <label class="form-check-label" for="sound-feedback">
@@ -221,6 +228,17 @@
                                         </label>
                                     </div>
                                 </div>
+                                <div class="col-md-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="hd-mode" checked>
+                                        <label class="form-check-label" for="hd-mode">
+                                            Mode HD
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="alert alert-info mt-2 mb-0 small">
+                                <i class="fas fa-lightbulb"></i> <strong>Astuce:</strong> Pour les petits codes-barres, activez le Flash et utilisez le Zoom (distance 10-20cm recommandée)
                             </div>
                         </div>
                     </div>
@@ -392,6 +410,7 @@ let lastScanTime = 0;
 let isScanning = false;
 let availableCameras = [];
 let currentCameraIndex = 0;
+let currentZoom = 1;
 const DEBOUNCE_TIME = 2000; // 2 secondes anti-doublon
 
 // Sons
@@ -469,9 +488,46 @@ async function startCamera() {
             btnSwitch.style.display = 'none';
         }
 
-        // Démarrer le scan
+        // Démarrer le scan avec contraintes optimisées
         const selectedDevice = availableCameras[currentCameraIndex]?.deviceId;
         const videoElement = document.getElementById('camera-preview');
+        
+        // Contraintes pour meilleure résolution et mise au point
+        const constraints = {
+            video: {
+                deviceId: selectedDevice ? { exact: selectedDevice } : undefined,
+                width: { ideal: 1920, min: 1280 },
+                height: { ideal: 1080, min: 720 },
+                facingMode: { ideal: 'environment' }, // Caméra arrière par défaut
+                focusMode: { ideal: 'continuous' },
+                focusDistance: { ideal: 0.15 }, // 15cm optimal pour codes-barres
+                aspectRatio: { ideal: 16/9 }
+            }
+        };
+
+        // Obtenir le stream avec contraintes
+        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+        videoElement.srcObject = currentStream;
+        
+        // Attendre que la vidéo soit prête
+        await new Promise((resolve) => {
+            videoElement.onloadedmetadata = () => {
+                videoElement.play();
+                resolve();
+            };
+        });
+        
+        // Configuration ZXing optimisée pour Code128
+        const hints = new Map();
+        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+            ZXing.BarcodeFormat.CODE_128,
+            ZXing.BarcodeFormat.CODE_39,
+            ZXing.BarcodeFormat.EAN_13,
+            ZXing.BarcodeFormat.EAN_8
+        ]);
+        hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+        
+        codeReader = new ZXing.BrowserMultiFormatReader(hints);
         
         await codeReader.decodeFromVideoDevice(selectedDevice, videoElement, (result, err) => {
             if (result) {
@@ -479,16 +535,16 @@ async function startCamera() {
             }
         });
 
-        currentStream = videoElement.srcObject;
-        isScanning = true;
-        
-        // Vérifier si flash disponible
+                
+        // Vérifier si flash et zoom disponibles
         checkTorchCapability();
+        checkZoomCapability();
         
         // UI Updates
         document.getElementById('btn-start-camera').style.display = 'none';
         document.getElementById('btn-stop-camera').style.display = 'inline-block';
         document.getElementById('btn-toggle-torch').style.display = 'inline-block';
+        document.getElementById('btn-zoom-in').style.display = 'inline-block';
         document.getElementById('scan-line-container').style.display = 'block';
         
         updateCameraMessage('Caméra active - Scannez un code-barres', 'success');
@@ -524,7 +580,9 @@ function stopCamera() {
         document.getElementById('btn-start-camera').style.display = 'inline-block';
         document.getElementById('btn-stop-camera').style.display = 'none';
         document.getElementById('btn-toggle-torch').style.display = 'none';
+        document.getElementById('btn-zoom-in').style.display = 'none';
         document.getElementById('scan-line-container').style.display = 'none';
+        document.getElementById('zoom-control').style.display = 'none';
         
         updateCameraMessage('Caméra arrêtée', 'info');
         updateStatusBadge('stopped');
@@ -659,6 +717,42 @@ async function handleBarcodeDetected(barcode) {
     }
 }
 
+async function checkZoomCapability() {
+    if (!currentStream) return;
+    
+    try {
+        const track = currentStream.getVideoTracks()[0];
+        const capabilities = track.getCapabilities();
+        
+        if (capabilities.zoom) {
+            const zoomControl = document.getElementById('zoom-control');
+            const zoomRange = document.getElementById('zoom-range');
+            const zoomLevel = document.getElementById('zoom-level');
+            
+            zoomControl.style.display = 'block';
+            zoomRange.min = capabilities.zoom.min || 1;
+            zoomRange.max = capabilities.zoom.max || 5;
+            zoomRange.value = capabilities.zoom.min || 1;
+            
+            zoomRange.oninput = async function() {
+                const zoomValue = parseFloat(this.value);
+                zoomLevel.textContent = zoomValue.toFixed(1);
+                
+                try {
+                    await track.applyConstraints({
+                        advanced: [{ zoom: zoomValue }]
+                    });
+                    currentZoom = zoomValue;
+                } catch (e) {
+                    console.error('Erreur zoom:', e);
+                }
+            };
+        }
+    } catch (e) {
+        console.log('Zoom non disponible');
+    }
+}
+
 function closeLastScanAlert() {
     document.getElementById('camera-last-scan').style.display = 'none';
 }
@@ -668,6 +762,16 @@ document.getElementById('btn-start-camera')?.addEventListener('click', startCame
 document.getElementById('btn-stop-camera')?.addEventListener('click', stopCamera);
 document.getElementById('btn-toggle-torch')?.addEventListener('click', toggleTorch);
 document.getElementById('btn-switch-camera')?.addEventListener('click', switchCamera);
+
+// Toggle zoom control visibility
+document.getElementById('btn-zoom-in')?.addEventListener('click', function() {
+    const zoomControl = document.getElementById('zoom-control');
+    if (zoomControl.style.display === 'none' || !zoomControl.style.display) {
+        zoomControl.style.display = 'block';
+    } else {
+        zoomControl.style.display = 'none';
+    }
+});
 
 // Cleanup on page unload
 window.addEventListener('beforeunload', () => {
