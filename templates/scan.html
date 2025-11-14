@@ -23,7 +23,12 @@
                     </div>
                     <div class="col-3">
                         <small><strong>Poids:</strong></small><br>
+                        {% if last_scan.poids_physique is not none %}
                         {{ "%.1f"|format(last_scan.poids_physique) }} kg
+                        {% else %}
+    -
+                        {% endif %}
+                        
                     </div>
                     <div class="col-3">
                         <small><strong>Heure:</strong></small><br>
