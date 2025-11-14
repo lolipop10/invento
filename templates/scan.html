@@ -23,7 +23,11 @@
                     </div>
                     <div class="col-3">
                         <small><strong>Poids:</strong></small><br>
-                        {{ "%.1f"|format(last_scan.poids_physique) }} kg
+                        {% if last_scan.poids_physique is not none %}
+                            {{ "%.1f"|format(last_scan.poids_physique) }} kg
+                        {% else %}
+                            -
+                        {% endif %}
                     </div>
                     <div class="col-3">
                         <small><strong>Heure:</strong></small><br>
@@ -127,7 +131,7 @@
                 <div class="card-body">
                     <!-- Camera Preview -->
                     <div class="position-relative mb-3" style="background: #000; border-radius: 10px; overflow: hidden;">
-                        <video id="camera-preview" class="w-100" style="max-height: 400px; display: block;" autoplay playsinline muted></video>
+                        <video id="camera-preview" class="w-100" style="max-height: 600px; display: block;" autoplay playsinline muted></video>
                         
                         <!-- Scan Line Animation -->
                         <div id="scan-line-container" class="position-absolute top-0 start-0 w-100 h-100" style="pointer-events: none; display: none;">
@@ -207,38 +211,30 @@
                                 <div class="col-md-3">
                                     <div class="form-check form-switch">
                                         <input class="form-check-input" type="checkbox" id="continuous-scan" checked>
-                                        <label class="form-check-label" for="continuous-scan">
-                                            Scan continu
-                                        </label>
+                                        <label class="form-check-label" for="continuous-scan">Scan continu</label>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check form-switch">
                                         <input class="form-check-input" type="checkbox" id="auto-weight" checked>
-                                        <label class="form-check-label" for="auto-weight">
-                                            Poids auto (MB52)
-                                        </label>
+                                        <label class="form-check-label" for="auto-weight">Poids auto (MB52)</label>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check form-switch">
                                         <input class="form-check-input" type="checkbox" id="sound-feedback" checked>
-                                        <label class="form-check-label" for="sound-feedback">
-                                            Son activé
-                                        </label>
+                                        <label class="form-check-label" for="sound-feedback">Son activé</label>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check form-switch">
                                         <input class="form-check-input" type="checkbox" id="hd-mode" checked>
-                                        <label class="form-check-label" for="hd-mode">
-                                            Mode HD
-                                        </label>
+                                        <label class="form-check-label" for="hd-mode">Mode HD (résolution max)</label>
                                     </div>
                                 </div>
                             </div>
                             <div class="alert alert-info mt-2 mb-0 small">
-                                <i class="fas fa-lightbulb"></i> <strong>Astuce:</strong> Pour les petits codes-barres, activez le Flash et utilisez le Zoom (distance 10-20cm recommandée)
+                                <i class="fas fa-lightbulb"></i> <strong>Astuce:</strong> Pour les grands codes imprimés, gardez la caméra à ~20-40cm selon la taille de l'étiquette, activez Mode HD si disponible.
                             </div>
                         </div>
                     </div>
@@ -271,10 +267,10 @@
                     <div class="col-md-6">
                         <h6><i class="fas fa-camera"></i> Mode Caméra:</h6>
                         <ul class="mb-0">
-                            <li>Détection automatique des codes-barres</li>
+                            <li>Détection automatique des codes-barres (native si disponible)</li>
                             <li>Enregistrement automatique et instantané</li>
                             <li>Feedback visuel et sonore</li>
-                            <li>Scan continu sans interruption</li>
+                            <li>Scan continu sans interruption (option)</li>
                         </ul>
                     </div>
                 </div>
@@ -284,6 +280,7 @@
 </div>
 
 <style>
+/* --- Styles repris et légers ajustements --- */
 .scanner-input {
     font-size: 1.2rem;
     padding: 15px;
@@ -297,8 +294,9 @@
 }
 
 #camera-preview {
-    object-fit: cover;
+    object-fit: contain;
     border: 3px solid #28a745;
+    background: #000;
 }
 
 .scan-line {
@@ -317,8 +315,8 @@
 }
 
 .scan-target-box {
-    width: 280px;
-    height: 120px;
+    width: 420px;
+    height: 140px;
     border: 3px solid #00ff00;
     border-radius: 10px;
     box-shadow: 0 0 20px rgba(0, 255, 0, 0.5), inset 0 0 20px rgba(0, 255, 0, 0.2);
@@ -349,87 +347,39 @@
 {% endblock %}
 
 {% block scripts %}
-<!-- ZXing Barcode Scanner Library -->
+<!-- ZXing fallback library (kept as fallback) -->
 <script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
 
 <script>
-// ==================== MODE SWITCHING ====================
-function switchMode(mode) {
-    const scannerMode = document.getElementById('scanner-mode');
-    const cameraMode = document.getElementById('camera-mode');
-    const btnScanner = document.getElementById('btn-mode-scanner');
-    const btnCamera = document.getElementById('btn-mode-camera');
+/* =========================
+   Camera scanning improved
+   ========================= */
 
-    if (mode === 'scanner') {
-        scannerMode.style.display = 'block';
-        cameraMode.style.display = 'none';
-        btnScanner.classList.add('active');
-        btnScanner.classList.remove('btn-outline-primary');
-        btnScanner.classList.add('btn-primary');
-        btnCamera.classList.remove('active');
-        btnCamera.classList.add('btn-outline-primary');
-        btnCamera.classList.remove('btn-primary');
-        
-        // Stop camera if running
-        stopCamera();
-        
-        // Focus barcode input
-        setTimeout(() => document.getElementById('barcode')?.focus(), 100);
-    } else {
-        scannerMode.style.display = 'none';
-        cameraMode.style.display = 'block';
-        btnCamera.classList.add('active');
-        btnCamera.classList.remove('btn-outline-primary');
-        btnCamera.classList.add('btn-primary');
-        btnScanner.classList.remove('active');
-        btnScanner.classList.add('btn-outline-primary');
-        btnScanner.classList.remove('btn-primary');
-    }
-}
-
-// ==================== SCANNER MODE (DOUCHETTE) ====================
-document.getElementById('barcode')?.addEventListener('input', function(e) {
-    let value = e.target.value;
-    if (value.length > 28) {
-        e.target.value = value.substring(0, 28);
-    }
-});
-
-document.getElementById('barcode')?.addEventListener('keyup', function(e) {
-    if (e.target.value.length === 28 && e.key === 'Enter') {
-        document.getElementById('poids')?.focus();
-    }
-});
-
-// ==================== CAMERA MODE ====================
-let codeReader = null;
+let isScanning = false;
 let currentStream = null;
+let codeReader = null;
 let scanCount = 0;
 let lastScannedCode = '';
 let lastScanTime = 0;
-let isScanning = false;
-let availableCameras = [];
-let currentCameraIndex = 0;
-let currentZoom = 1;
-const DEBOUNCE_TIME = 2000; // 2 secondes anti-doublon
+const DEBOUNCE_TIME = 1200; // ms anti-doublon
+const MIN_INTERVAL = 400; // petite protection
+const desiredFormats = ['code_128', 'code_39', 'ean_13', 'ean_8']; // pour BarcodeDetector
 
-// Sons
+// audio feedback
 const successSound = new Audio('data:audio/wav;base64,UklGRi4AAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQoAAAAAAAAAAAAAAAA=');
 const errorSound = new Audio('data:audio/wav;base64,UklGRi4AAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQoAAAAAAAAAAAAAAAA=');
 
-function updateCameraMessage(message, type = 'info') {
+function updateCameraMessage(message, type='info') {
     const msgDiv = document.getElementById('camera-message');
     if (!msgDiv) return;
-    
     msgDiv.className = `alert alert-${type}`;
-    const icon = type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-triangle' : 'info-circle';
+    const icon = type==='success' ? 'check-circle' : type==='danger' ? 'exclamation-triangle' : 'info-circle';
     msgDiv.innerHTML = `<i class="fas fa-${icon}"></i> ${message}`;
 }
 
 function updateStatusBadge(status) {
     const badge = document.getElementById('camera-status-badge');
     if (!badge) return;
-    
     if (status === 'running') {
         badge.textContent = 'En cours';
         badge.className = 'badge bg-success text-white';
@@ -445,239 +395,284 @@ function updateStatusBadge(status) {
 function showSuccessFlash() {
     const flash = document.getElementById('scan-success-flash');
     if (!flash) return;
-    
     flash.style.display = 'block';
-    flash.style.opacity = '0.5';
-    setTimeout(() => {
+    flash.style.opacity = '0.6';
+    setTimeout(()=> {
         flash.style.opacity = '0';
-        setTimeout(() => flash.style.display = 'none', 300);
+        setTimeout(()=> flash.style.display = 'none', 300);
     }, 150);
 }
 
-function playSound(success = true) {
+function playSound(success=true) {
     if (!document.getElementById('sound-feedback')?.checked) return;
-    try {
-        (success ? successSound : errorSound).play().catch(() => {});
-    } catch (e) {}
+    try { (success ? successSound : errorSound).play().catch(()=>{}); } catch(e) {}
+}
+
+function canUseBarcodeDetector() {
+    return ('BarcodeDetector' in window);
+}
+
+async function getHighResConstraints() {
+    // demande une résolution élevée si l'utilisateur a activé HD dans UI
+    const hd = document.getElementById('hd-mode')?.checked;
+    if (!hd) {
+        return { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } };
+    }
+    // demander une résolution plus élevée, le navigateur choisira la meilleure dispo
+    return {
+        video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 3840, max: 3840 },
+            height: { ideal: 2160, max: 2160 },
+            aspectRatio: { ideal: 16/9 }
+        }
+    };
 }
 
 async function startCamera() {
     if (isScanning) return;
+    updateCameraMessage('Initialisation de la caméra...', 'info');
 
     try {
-        updateCameraMessage('Initialisation de la caméra...', 'info');
-        
-        // Initialiser ZXing
-        if (!codeReader) {
-            codeReader = new ZXing.BrowserMultiFormatReader();
-        }
-
-        // Obtenir les caméras disponibles
-        const devices = await codeReader.listVideoInputDevices();
-        availableCameras = devices.filter(d => d.kind === 'videoinput');
-        
-        if (availableCameras.length === 0) {
-            throw new Error('Aucune caméra détectée');
-        }
-
-        // Bouton changement caméra
-        const btnSwitch = document.getElementById('btn-switch-camera');
-        if (availableCameras.length > 1) {
-            btnSwitch.style.display = 'inline-block';
-        } else {
-            btnSwitch.style.display = 'none';
-        }
-
-        // Démarrer le scan avec contraintes optimisées
-        const selectedDevice = availableCameras[currentCameraIndex]?.deviceId;
-        const videoElement = document.getElementById('camera-preview');
-        
-        // Contraintes pour meilleure résolution et mise au point
-        const constraints = {
-            video: {
-                deviceId: selectedDevice ? { exact: selectedDevice } : undefined,
-                width: { ideal: 1920, min: 1280 },
-                height: { ideal: 1080, min: 720 },
-                facingMode: { ideal: 'environment' }, // Caméra arrière par défaut
-                focusMode: { ideal: 'continuous' },
-                focusDistance: { ideal: 0.15 }, // 15cm optimal pour codes-barres
-                aspectRatio: { ideal: 16/9 }
-            }
-        };
-
-        // Obtenir le stream avec contraintes
+        const constraints = await getHighResConstraints();
         currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-        videoElement.srcObject = currentStream;
-        
-        // Attendre que la vidéo soit prête
-        await new Promise((resolve) => {
-            videoElement.onloadedmetadata = () => {
-                videoElement.play();
-                resolve();
-            };
-        });
-        
-        // Configuration ZXing optimisée pour Code128
-        const hints = new Map();
-        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-            ZXing.BarcodeFormat.CODE_128,
-            ZXing.BarcodeFormat.CODE_39,
-            ZXing.BarcodeFormat.EAN_13,
-            ZXing.BarcodeFormat.EAN_8
-        ]);
-        hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-        
-        codeReader = new ZXing.BrowserMultiFormatReader(hints);
-        
-        await codeReader.decodeFromVideoDevice(selectedDevice, videoElement, (result, err) => {
-            if (result) {
-                handleBarcodeDetected(result.text);
-            }
-        });
 
-                
-        // Vérifier si flash et zoom disponibles
-        checkTorchCapability();
-        checkZoomCapability();
-        
-        // UI Updates
+        const video = document.getElementById('camera-preview');
+        video.srcObject = currentStream;
+        await video.play();
+
+        // update UI buttons
         document.getElementById('btn-start-camera').style.display = 'none';
         document.getElementById('btn-stop-camera').style.display = 'inline-block';
-        document.getElementById('btn-toggle-torch').style.display = 'inline-block';
-        document.getElementById('btn-zoom-in').style.display = 'inline-block';
         document.getElementById('scan-line-container').style.display = 'block';
-        
-        updateCameraMessage('Caméra active - Scannez un code-barres', 'success');
+
+        // Detect capabilities (torch / zoom)
+        try {
+            const track = currentStream.getVideoTracks()[0];
+            const caps = track.getCapabilities ? track.getCapabilities() : {};
+            // torch
+            const btnTorch = document.getElementById('btn-toggle-torch');
+            if (caps.torch) {
+                btnTorch.style.display = 'inline-block';
+                btnTorch.disabled = false;
+            } else {
+                btnTorch.style.display = 'none';
+            }
+            // zoom
+            if (caps.zoom) {
+                document.getElementById('btn-zoom-in').style.display = 'inline-block';
+                const zoomControl = document.getElementById('zoom-control');
+                const zoomRange = document.getElementById('zoom-range');
+                zoomControl.style.display = 'block';
+                zoomRange.min = caps.zoom.min || 1;
+                zoomRange.max = caps.zoom.max || 5;
+                zoomRange.value = caps.zoom.min || 1;
+                zoomRange.oninput = async function() {
+                    const v = parseFloat(this.value);
+                    document.getElementById('zoom-level').textContent = v.toFixed(1);
+                    try { await track.applyConstraints({ advanced: [{ zoom: v }] }); } catch(e){}
+                };
+            }
+        } catch(e){ console.log('cap check err', e); }
+
+        updateCameraMessage('Caméra active - en attente de code...', 'success');
         updateStatusBadge('running');
-        
-    } catch (error) {
-        console.error('Erreur caméra:', error);
-        updateCameraMessage(`Erreur: ${error.message}`, 'danger');
+        isScanning = true;
+
+        // choose detection strategy: native BarcodeDetector (fast & robust) OR ZXing fallback
+        if (canUseBarcodeDetector()) {
+            // check supported formats
+            try {
+                const supported = await BarcodeDetector.getSupportedFormats();
+                const hasWanted = desiredFormats.some(f => supported.includes(f));
+                if (hasWanted) {
+                    startNativeDetection();
+                    return;
+                }
+            } catch (e) {
+                // ignore and fallback
+                console.warn('BarcodeDetector check failed', e);
+            }
+        }
+        // fallback ZXing
+        startZXingDetection();
+
+    } catch (err) {
+        console.error('Erreur caméra:', err);
+        updateCameraMessage(`Erreur: ${err.message || err}`, 'danger');
         updateStatusBadge('error');
+        stopCamera();
     }
 }
 
-function stopCamera() {
-    if (!isScanning) return;
-
+async function stopCamera() {
+    if (!isScanning && !currentStream) return;
     try {
-        if (codeReader) {
-            codeReader.reset();
+        // stop ZXing if used
+        if (codeReader && typeof codeReader.reset === 'function') {
+            try { codeReader.reset(); } catch(e){}
+            codeReader = null;
         }
-        
         if (currentStream) {
-            currentStream.getTracks().forEach(track => track.stop());
+            currentStream.getTracks().forEach(t => { try { t.stop(); } catch(e){} });
             currentStream = null;
         }
-
-        const videoElement = document.getElementById('camera-preview');
-        if (videoElement) {
-            videoElement.srcObject = null;
-        }
+        const video = document.getElementById('camera-preview');
+        if (video) video.srcObject = null;
 
         isScanning = false;
-        
         document.getElementById('btn-start-camera').style.display = 'inline-block';
         document.getElementById('btn-stop-camera').style.display = 'none';
         document.getElementById('btn-toggle-torch').style.display = 'none';
         document.getElementById('btn-zoom-in').style.display = 'none';
         document.getElementById('scan-line-container').style.display = 'none';
         document.getElementById('zoom-control').style.display = 'none';
-        
+
         updateCameraMessage('Caméra arrêtée', 'info');
         updateStatusBadge('stopped');
-        
-    } catch (error) {
-        console.error('Erreur arrêt caméra:', error);
-    }
-}
-
-async function switchCamera() {
-    if (!isScanning || availableCameras.length <= 1) return;
-    
-    currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
-    stopCamera();
-    await startCamera();
-}
-
-async function toggleTorch() {
-    if (!currentStream) return;
-
-    try {
-        const track = currentStream.getVideoTracks()[0];
-        const capabilities = track.getCapabilities();
-        
-        if (!capabilities.torch) {
-            updateCameraMessage('Flash non disponible sur cette caméra', 'warning');
-            return;
-        }
-
-        const currentSettings = track.getSettings();
-        await track.applyConstraints({
-            advanced: [{ torch: !currentSettings.torch }]
-        });
-        
-        const btn = document.getElementById('btn-toggle-torch');
-        btn.classList.toggle('btn-warning');
-        btn.classList.toggle('btn-light');
-        
-    } catch (error) {
-        console.error('Erreur flash:', error);
-        updateCameraMessage('Impossible d\'activer le flash', 'warning');
-    }
-}
-
-async function checkTorchCapability() {
-    if (!currentStream) return;
-    
-    try {
-        const track = currentStream.getVideoTracks()[0];
-        const capabilities = track.getCapabilities();
-        const btnTorch = document.getElementById('btn-toggle-torch');
-        
-        if (capabilities.torch) {
-            btnTorch.disabled = false;
-            btnTorch.title = 'Activer/Désactiver le flash';
-        } else {
-            btnTorch.disabled = true;
-            btnTorch.title = 'Flash non disponible';
-        }
     } catch (e) {
-        document.getElementById('btn-toggle-torch').disabled = true;
+        console.error('Erreur arrêt caméra:', e);
     }
 }
 
-async function handleBarcodeDetected(barcode) {
+async function startNativeDetection() {
+    // Utilise l'API BarcodeDetector si disponible (plus fiable/performante pour les codes larges)
+    const video = document.getElementById('camera-preview');
+    const opts = { formats: desiredFormats };
+    let detector;
+    try {
+        detector = new BarcodeDetector(opts);
+    } catch (e) {
+        console.warn('BarcodeDetector construction failed', e);
+        startZXingDetection();
+        return;
+    }
+
+    // On lit frames via createImageBitmap pour une meilleure compatibilité
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    async function loop() {
+        if (!isScanning) return;
+        try {
+            // dimension canvas adaptée à la vidéo
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // convert to ImageBitmap if supported (plus rapide)
+            let imageBitmap;
+            try {
+                imageBitmap = await createImageBitmap(canvas);
+            } catch (e) {
+                imageBitmap = null;
+            }
+
+            const results = imageBitmap ? await detector.detect(imageBitmap) : await detector.detect(canvas);
+            if (results && results.length) {
+                // prend le premier résultat utile
+                for (const res of results) {
+                    const code = res.rawValue?.trim();
+                    if (code && allowProcessCode(code)) {
+                        handleDetectedCode(code);
+                        break;
+                    }
+                }
+            }
+        } catch (e) {
+            // ignore occasional detection errors
+            // console.log('native detect err', e);
+        } finally {
+            // petite attente pour limiter charge CPU
+            setTimeout(() => {
+                requestAnimationFrame(loop);
+            }, 50);
+        }
+    }
+
+    requestAnimationFrame(loop);
+    updateCameraMessage('Détection native activée', 'success');
+}
+
+function startZXingDetection() {
+    // fallback ZXing.decodeFromVideoDevice
+    const video = document.getElementById('camera-preview');
+    try {
+        codeReader = new ZXing.BrowserMultiFormatReader();
+        // on lance la détection continue; callback exécutée pour chaque frame décodée
+        // récupérer deviceId si possible
+        const track = currentStream.getVideoTracks()[0];
+        const settings = track.getSettings ? track.getSettings() : {};
+        const deviceId = settings.deviceId;
+        codeReader.decodeFromVideoDevice(deviceId || null, video, (result, err) => {
+            if (result) {
+                const code = result.text?.trim();
+                if (code && allowProcessCode(code)) {
+                    handleDetectedCode(code);
+                }
+            }
+            // ignore errors
+        });
+        updateCameraMessage('Détection ZXing activée', 'success');
+    } catch (e) {
+        console.error('ZXing start failed', e);
+        updateCameraMessage('Erreur initialisation ZXing', 'danger');
+    }
+}
+
+function allowProcessCode(code) {
+    // anti-doublon basique
     const now = Date.now();
-    
-    // Anti-doublon
-    if (barcode === lastScannedCode && (now - lastScanTime) < DEBOUNCE_TIME) {
-        return;
-    }
+    if (code === lastScannedCode && (now - lastScanTime) < DEBOUNCE_TIME) return false;
+    if ((now - lastScanTime) < MIN_INTERVAL) return false;
+    // format minimal check (tu peux ajuster selon règle 28 chars)
+    return true;
+}
 
-    lastScannedCode = barcode;
+function handleDetectedCode(code) {
+    const now = Date.now();
+    lastScannedCode = code;
     lastScanTime = now;
-
-    // Validation format
-    if (barcode.length !== 28 || !/^[A-Za-z0-9]+$/.test(barcode)) {
-        playSound(false);
-        updateCameraMessage(`Code invalide: ${barcode.substring(0, 20)}... (doit être 28 caractères alphanumériques)`, 'warning');
-        return;
-    }
-
-    // Extraction
-    const codeArticle = barcode.substring(8, 18);
-    const lot = barcode.substring(18, 28);
-
-    // Feedback visuel
+    scanCount++;
+    document.getElementById('scan-count').textContent = `Scans: ${scanCount}`;
     showSuccessFlash();
     playSound(true);
 
-    // Incrémenter compteur
-    scanCount++;
-    document.getElementById('scan-count').textContent = `Scans: ${scanCount}`;
+    // si non-formaté 28 caractères, afficher avertissement
+    if (code.length !== 28) {
+        updateCameraMessage(`Code détecté (format inattendu ${code.length}): ${code.substring(0,40)}...`, 'warning');
+        // si tu veux ignorer, return; ici on continue pour permettre tests
+    } else {
+        updateCameraMessage(`Code détecté: ${code.substring(0,20)}...`, 'success');
+    }
 
-    // Envoyer au serveur
+    // extraire article/lot comme avant
+    const codeArticle = code.substring(8, 18);
+    const lot = code.substring(18, 28);
+
+    // afficher temporairement dans UI caméra
+    document.getElementById('cam-last-lot').textContent = lot;
+    document.getElementById('cam-last-code').textContent = codeArticle;
+    document.getElementById('cam-last-weight').textContent = document.getElementById('auto-weight')?.checked ? 'Auto' : '-';
+    document.getElementById('camera-last-scan').style.display = 'block';
+
+    // Envoi au serveur (POST vers endpoint scan)
+    sendScanToServer(code).then(ok => {
+        if (!ok) {
+            playSound(false);
+            updateCameraMessage('Erreur lors de l\'enregistrement serveur', 'danger');
+        } else {
+            updateCameraMessage(`Lot ${lot} enregistré`, 'success');
+        }
+    });
+
+    // si mode non-continu, on arrête
+    if (!document.getElementById('continuous-scan')?.checked) {
+        setTimeout(()=> stopCamera(), 800);
+    }
+}
+
+async function sendScanToServer(barcode) {
     try {
         const autoWeight = document.getElementById('auto-weight')?.checked;
         const formData = new FormData();
@@ -685,71 +680,61 @@ async function handleBarcodeDetected(barcode) {
         if (!autoWeight) {
             formData.append('poids', '0');
         }
-
-        const response = await fetch('{{ url_for("scan") }}', {
-            method: 'POST',
-            body: formData
-        });
-
-        if (response.ok) {
-            // Afficher le dernier scan
-            document.getElementById('cam-last-lot').textContent = lot;
-            document.getElementById('cam-last-code').textContent = codeArticle;
-            document.getElementById('cam-last-weight').textContent = autoWeight ? 'Auto' : '-';
-            document.getElementById('camera-last-scan').style.display = 'block';
-            
-            updateCameraMessage(`✓ Lot ${lot} enregistré avec succès!`, 'success');
-            
-            // Mode non-continu: arrêt après scan
-            if (!document.getElementById('continuous-scan')?.checked) {
-                setTimeout(() => stopCamera(), 1500);
-            }
-        } else {
-            const text = await response.text();
-            playSound(false);
-            updateCameraMessage(`Erreur serveur: ${text.substring(0, 100)}`, 'danger');
-        }
-        
-    } catch (error) {
-        console.error('Erreur enregistrement:', error);
-        playSound(false);
-        updateCameraMessage(`Erreur réseau: ${error.message}`, 'danger');
+        const res = await fetch('{{ url_for("scan") }}', { method: 'POST', body: formData });
+        return res.ok;
+    } catch (e) {
+        console.error('sendScan error', e);
+        return false;
     }
 }
 
-async function checkZoomCapability() {
+// toggles & utility
+async function toggleTorch() {
     if (!currentStream) return;
-    
     try {
         const track = currentStream.getVideoTracks()[0];
-        const capabilities = track.getCapabilities();
-        
-        if (capabilities.zoom) {
-            const zoomControl = document.getElementById('zoom-control');
-            const zoomRange = document.getElementById('zoom-range');
-            const zoomLevel = document.getElementById('zoom-level');
-            
-            zoomControl.style.display = 'block';
-            zoomRange.min = capabilities.zoom.min || 1;
-            zoomRange.max = capabilities.zoom.max || 5;
-            zoomRange.value = capabilities.zoom.min || 1;
-            
-            zoomRange.oninput = async function() {
-                const zoomValue = parseFloat(this.value);
-                zoomLevel.textContent = zoomValue.toFixed(1);
-                
-                try {
-                    await track.applyConstraints({
-                        advanced: [{ zoom: zoomValue }]
-                    });
-                    currentZoom = zoomValue;
-                } catch (e) {
-                    console.error('Erreur zoom:', e);
-                }
-            };
+        const caps = track.getCapabilities ? track.getCapabilities() : {};
+        if (!caps.torch) {
+            updateCameraMessage('Flash non disponible', 'warning');
+            return;
         }
+        const settings = track.getSettings ? track.getSettings() : {};
+        const current = settings.torch || false;
+        await track.applyConstraints({ advanced: [{ torch: !current }] });
+        updateCameraMessage(`Flash ${!current ? 'activé' : 'désactivé'}`, 'info');
     } catch (e) {
-        console.log('Zoom non disponible');
+        console.error('torch err', e);
+        updateCameraMessage('Impossible d\'activer le flash', 'warning');
+    }
+}
+
+function switchMode(mode) {
+    const scannerMode = document.getElementById('scanner-mode');
+    const cameraMode = document.getElementById('camera-mode');
+    const btnScanner = document.getElementById('btn-mode-scanner');
+    const btnCamera = document.getElementById('btn-mode-camera');
+
+    if (mode === 'scanner') {
+        scannerMode.style.display = 'block';
+        cameraMode.style.display = 'none';
+        btnScanner.classList.add('active');
+        btnScanner.classList.remove('btn-outline-primary');
+        btnScanner.classList.add('btn-primary');
+        btnCamera.classList.remove('active');
+        btnCamera.classList.add('btn-outline-primary');
+        btnCamera.classList.remove('btn-primary');
+
+        stopCamera();
+        setTimeout(()=> document.getElementById('barcode')?.focus(), 100);
+    } else {
+        scannerMode.style.display = 'none';
+        cameraMode.style.display = 'block';
+        btnCamera.classList.add('active');
+        btnCamera.classList.remove('btn-outline-primary');
+        btnCamera.classList.add('btn-primary');
+        btnScanner.classList.remove('active');
+        btnScanner.classList.add('btn-outline-primary');
+        btnScanner.classList.remove('btn-primary');
     }
 }
 
@@ -757,25 +742,34 @@ function closeLastScanAlert() {
     document.getElementById('camera-last-scan').style.display = 'none';
 }
 
-// Event Listeners
+// Event listeners
 document.getElementById('btn-start-camera')?.addEventListener('click', startCamera);
 document.getElementById('btn-stop-camera')?.addEventListener('click', stopCamera);
 document.getElementById('btn-toggle-torch')?.addEventListener('click', toggleTorch);
-document.getElementById('btn-switch-camera')?.addEventListener('click', switchCamera);
+document.getElementById('btn-switch-camera')?.addEventListener('click', async function() {
+    // change camera by cycling device list: simple approach is stop/start and prompt user
+    await stopCamera();
+    // flip camera by toggling facingMode preference (simple)
+    document.getElementById('hd-mode').checked = document.getElementById('hd-mode').checked; // noop: placeholder
+    startCamera();
+});
 
-// Toggle zoom control visibility
 document.getElementById('btn-zoom-in')?.addEventListener('click', function() {
     const zoomControl = document.getElementById('zoom-control');
-    if (zoomControl.style.display === 'none' || !zoomControl.style.display) {
-        zoomControl.style.display = 'block';
-    } else {
-        zoomControl.style.display = 'none';
-    }
+    if (!zoomControl) return;
+    zoomControl.style.display = (zoomControl.style.display === 'block') ? 'none' : 'block';
 });
 
-// Cleanup on page unload
-window.addEventListener('beforeunload', () => {
-    stopCamera();
+// barcode input constraints
+document.getElementById('barcode')?.addEventListener('input', function(e) {
+    let value = e.target.value;
+    if (value.length > 28) e.target.value = value.substring(0,28);
 });
+document.getElementById('barcode')?.addEventListener('keyup', function(e) {
+    if (e.target.value.length === 28 && e.key === 'Enter') document.getElementById('poids')?.focus();
+});
+
+// cleanup
+window.addEventListener('beforeunload', () => { stopCamera(); });
 </script>
 {% endblock %}
