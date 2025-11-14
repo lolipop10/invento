@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-8">
+    <div class="col-md-10">
         <!-- Last Scan Info -->
         {% if last_scan %}
         <div class="card border-info mb-3">
@@ -33,105 +33,640 @@
             </div>
         </div>
         {% endif %}
-        
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h4><i class="fas fa-qrcode"></i> Scanner Code-Barres</h4>
+
+        <!-- Mode Selection -->
+        <div class="card mb-3">
+            <div class="card-body p-2">
+                <div class="btn-group w-100" role="group">
+                    <button type="button" class="btn btn-primary active" id="btn-mode-scanner" onclick="switchMode('scanner')">
+                        <i class="fas fa-barcode"></i> Douchette
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" id="btn-mode-camera" onclick="switchMode('camera')">
+                        <i class="fas fa-camera"></i> Caméra
+                    </button>
+                </div>
             </div>
-            <div class="card-body">
-                <form method="POST">
-                    <div class="mb-4">
-                        <label for="barcode" class="form-label">
-                            <i class="fas fa-barcode"></i> Code-barres (28 caractères)
-                        </label>
-                        <input type="text" class="form-control scanner-input" id="barcode" name="barcode" 
-                               placeholder="Scannez ou saisissez le code-barres" autofocus required>
-                        <div class="form-text">Format: 28 caractères - Code Article (pos 8-18), Lot (pos 18-28)</div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="poids" class="form-label">
-                                    <i class="fas fa-weight"></i> Poids Physique (kg)
-                                </label>
-                                <input type="number" class="form-control" id="poids" name="poids" 
-                                       step="0.01" min="0" value="0">
+        </div>
+
+        <!-- SCANNER MODE (Douchette) -->
+        <div id="scanner-mode">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4><i class="fas fa-qrcode"></i> Scanner Code-Barres - Douchette</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-4">
+                            <label for="barcode" class="form-label">
+                                <i class="fas fa-barcode"></i> Code-barres (28 caractères)
+                            </label>
+                            <input type="text" class="form-control scanner-input" id="barcode" name="barcode" 
+                                   placeholder="Scannez ou saisissez le code-barres" autofocus required>
+                            <div class="form-text">Format: 28 caractères - Code Article (pos 8-18), Lot (pos 18-28)</div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="poids" class="form-label">
+                                        <i class="fas fa-weight"></i> Poids Physique (kg)
+                                    </label>
+                                    <input type="number" class="form-control" id="poids" name="poids" 
+                                           step="0.01" min="0" placeholder="0 = auto depuis MB52">
+                                    <div class="form-text">Laisser vide pour récupération auto depuis MB52</div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-comment"></i> Remarques
+                                    </label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="remarque" 
+                                               value="Bobine NC" id="remarque1">
+                                        <label class="form-check-label" for="remarque1">Bobine NC</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="remarque" 
+                                               value="Bobine Abimé" id="remarque2">
+                                        <label class="form-check-label" for="remarque2">Bobine Abimé</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="remarque" 
+                                               value="Bobine Non Séparé" id="remarque3">
+                                        <label class="form-check-label" for="remarque3">Bobine Non Séparé</label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">
-                                    <i class="fas fa-comment"></i> Remarques
-                                </label>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="remarque" 
-                                           value="Bobine NC" id="remarque1">
-                                    <label class="form-check-label" for="remarque1">Bobine NC</label>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                            <button type="submit" class="btn btn-primary btn-lg btn-custom me-md-2">
+                                <i class="fas fa-plus"></i> Ajouter à l'Inventaire
+                            </button>
+                            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary btn-lg btn-custom">
+                                <i class="fas fa-arrow-left"></i> Retour
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- CAMERA MODE -->
+        <div id="camera-mode" style="display: none;">
+            <div class="card">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0"><i class="fas fa-camera"></i> Scan par Caméra</h4>
+                    <div>
+                        <span class="badge bg-light text-dark me-2" id="scan-count">Scans: 0</span>
+                        <span class="badge bg-warning text-dark" id="camera-status-badge">Arrêté</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Camera Preview -->
+                    <div class="position-relative mb-3" style="background: #000; border-radius: 10px; overflow: hidden;">
+                        <video id="camera-preview" class="w-100" style="max-height: 400px; display: block;" autoplay playsinline muted></video>
+                        
+                        <!-- Scan Line Animation -->
+                        <div id="scan-line-container" class="position-absolute top-0 start-0 w-100 h-100" style="pointer-events: none; display: none;">
+                            <div class="scan-line"></div>
+                        </div>
+
+                        <!-- Success Flash -->
+                        <div id="scan-success-flash" class="position-absolute top-0 start-0 w-100 h-100 bg-success" style="display: none; opacity: 0;"></div>
+
+                        <!-- Target Box -->
+                        <div class="position-absolute top-50 start-50 translate-middle" style="pointer-events: none;">
+                            <div class="scan-target-box"></div>
+                        </div>
+
+                        <!-- Status Overlay -->
+                        <div id="camera-overlay" class="position-absolute bottom-0 start-0 w-100 p-3 text-white text-center" style="background: linear-gradient(transparent, rgba(0,0,0,0.7));">
+                            <i class="fas fa-qrcode fa-2x mb-2"></i>
+                            <p class="mb-0">Positionnez le code-barres dans le cadre</p>
+                        </div>
+                    </div>
+
+                    <!-- Status Messages -->
+                    <div id="camera-message" class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> Cliquez sur "Démarrer" pour activer la caméra
+                    </div>
+
+                    <!-- Last Scanned Result -->
+                    <div id="camera-last-scan" class="alert alert-success" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1"><i class="fas fa-check-circle"></i> Scan réussi!</h6>
+                                <div class="row small">
+                                    <div class="col-4"><strong>Lot:</strong> <span id="cam-last-lot">-</span></div>
+                                    <div class="col-4"><strong>Article:</strong> <span id="cam-last-code">-</span></div>
+                                    <div class="col-4"><strong>Poids:</strong> <span id="cam-last-weight">-</span> kg</div>
                                 </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="remarque" 
-                                           value="Bobine Abimé" id="remarque2">
-                                    <label class="form-check-label" for="remarque2">Bobine Abimé</label>
+                            </div>
+                            <button class="btn btn-sm btn-outline-success" onclick="closeLastScanAlert()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Camera Controls -->
+                    <div class="d-flex gap-2 justify-content-center mb-3">
+                        <button type="button" class="btn btn-success btn-lg" id="btn-start-camera">
+                            <i class="fas fa-play"></i> Démarrer
+                        </button>
+                        <button type="button" class="btn btn-danger btn-lg" id="btn-stop-camera" style="display: none;">
+                            <i class="fas fa-stop"></i> Arrêter
+                        </button>
+                        <button type="button" class="btn btn-warning btn-lg" id="btn-toggle-torch" style="display: none;" disabled>
+                            <i class="fas fa-lightbulb"></i> Flash
+                        </button>
+                        <button type="button" class="btn btn-info btn-lg" id="btn-switch-camera" style="display: none;">
+                            <i class="fas fa-sync-alt"></i> Changer
+                        </button>
+                    </div>
+
+                    <!-- Camera Settings -->
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h6 class="card-title"><i class="fas fa-cog"></i> Paramètres</h6>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="continuous-scan" checked>
+                                        <label class="form-check-label" for="continuous-scan">
+                                            Scan continu
+                                        </label>
+                                    </div>
                                 </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="remarque" 
-                                           value="Bobine Non Séparé" id="remarque3">
-                                    <label class="form-check-label" for="remarque3">Bobine Non Séparé</label>
+                                <div class="col-md-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="auto-weight" checked>
+                                        <label class="form-check-label" for="auto-weight">
+                                            Poids auto (MB52)
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="sound-feedback" checked>
+                                        <label class="form-check-label" for="sound-feedback">
+                                            Son activé
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-center">
-                        <button type="submit" class="btn btn-primary btn-lg btn-custom me-md-2">
-                            <i class="fas fa-plus"></i> Ajouter à l'Inventaire
-                        </button>
-                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary btn-lg btn-custom">
-                            <i class="fas fa-arrow-left"></i> Retour
+
+                    <div class="text-center mt-3">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Retour au Dashboard
                         </a>
                     </div>
-                </form>
+                </div>
             </div>
         </div>
-        
+
         <!-- Instructions Card -->
         <div class="card mt-4">
             <div class="card-header">
                 <h5><i class="fas fa-info-circle"></i> Instructions</h5>
             </div>
             <div class="card-body">
-                <ul class="mb-0">
-                    <li>Scannez le code-barres avec votre lecteur ou saisissez-le manuellement</li>
-                    <li>Le code-barres doit contenir exactement 28 caractères</li>
-                    <li>Le système extraira automatiquement le code article et le lot</li>
-                    <li>Ajoutez le poids physique et les remarques si nécessaire</li>
-                    <li>Cliquez sur "Ajouter à l'Inventaire" pour enregistrer</li>
-                </ul>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-barcode"></i> Mode Douchette:</h6>
+                        <ul class="mb-0">
+                            <li>Scannez avec votre lecteur code-barres</li>
+                            <li>Format: 28 caractères exactement</li>
+                            <li>Poids auto-rempli depuis MB52 si vide</li>
+                            <li>Validation manuelle requise</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-camera"></i> Mode Caméra:</h6>
+                        <ul class="mb-0">
+                            <li>Détection automatique des codes-barres</li>
+                            <li>Enregistrement automatique et instantané</li>
+                            <li>Feedback visuel et sonore</li>
+                            <li>Scan continu sans interruption</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+.scanner-input {
+    font-size: 1.2rem;
+    padding: 15px;
+    border: 2px solid #007bff;
+    border-radius: 10px;
+}
+
+.scanner-input:focus {
+    border-color: #0056b3;
+    box-shadow: 0 0 10px rgba(0, 123, 255, 0.5);
+}
+
+#camera-preview {
+    object-fit: cover;
+    border: 3px solid #28a745;
+}
+
+.scan-line {
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #00ff00, #00ff00, transparent);
+    position: absolute;
+    top: 0;
+    animation: scanAnimation 2s linear infinite;
+    box-shadow: 0 0 10px #00ff00;
+}
+
+@keyframes scanAnimation {
+    0% { top: 0; }
+    100% { top: 100%; }
+}
+
+.scan-target-box {
+    width: 280px;
+    height: 120px;
+    border: 3px solid #00ff00;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.5), inset 0 0 20px rgba(0, 255, 0, 0.2);
+    animation: targetPulse 2s ease-in-out infinite;
+}
+
+@keyframes targetPulse {
+    0%, 100% { opacity: 0.7; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.02); }
+}
+
+#scan-success-flash {
+    transition: opacity 0.3s;
+}
+
+.btn-custom {
+    border-radius: 25px;
+    padding: 10px 30px;
+    font-weight: 600;
+}
+
+.btn-group .btn.active {
+    background-color: #0056b3;
+    border-color: #0056b3;
+}
+</style>
+
 {% endblock %}
 
 {% block scripts %}
+<!-- ZXing Barcode Scanner Library -->
+<script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
+
 <script>
-// Auto-focus barcode input and clear after submission
-document.getElementById('barcode').addEventListener('input', function(e) {
-    // Remove any non-alphanumeric characters if needed
+// ==================== MODE SWITCHING ====================
+function switchMode(mode) {
+    const scannerMode = document.getElementById('scanner-mode');
+    const cameraMode = document.getElementById('camera-mode');
+    const btnScanner = document.getElementById('btn-mode-scanner');
+    const btnCamera = document.getElementById('btn-mode-camera');
+
+    if (mode === 'scanner') {
+        scannerMode.style.display = 'block';
+        cameraMode.style.display = 'none';
+        btnScanner.classList.add('active');
+        btnScanner.classList.remove('btn-outline-primary');
+        btnScanner.classList.add('btn-primary');
+        btnCamera.classList.remove('active');
+        btnCamera.classList.add('btn-outline-primary');
+        btnCamera.classList.remove('btn-primary');
+        
+        // Stop camera if running
+        stopCamera();
+        
+        // Focus barcode input
+        setTimeout(() => document.getElementById('barcode')?.focus(), 100);
+    } else {
+        scannerMode.style.display = 'none';
+        cameraMode.style.display = 'block';
+        btnCamera.classList.add('active');
+        btnCamera.classList.remove('btn-outline-primary');
+        btnCamera.classList.add('btn-primary');
+        btnScanner.classList.remove('active');
+        btnScanner.classList.add('btn-outline-primary');
+        btnScanner.classList.remove('btn-primary');
+    }
+}
+
+// ==================== SCANNER MODE (DOUCHETTE) ====================
+document.getElementById('barcode')?.addEventListener('input', function(e) {
     let value = e.target.value;
     if (value.length > 28) {
         e.target.value = value.substring(0, 28);
     }
 });
 
-// Auto-submit when barcode is exactly 28 characters (optional)
-document.getElementById('barcode').addEventListener('keyup', function(e) {
+document.getElementById('barcode')?.addEventListener('keyup', function(e) {
     if (e.target.value.length === 28 && e.key === 'Enter') {
-        // Auto-focus to weight field
-        document.getElementById('poids').focus();
+        document.getElementById('poids')?.focus();
     }
+});
+
+// ==================== CAMERA MODE ====================
+let codeReader = null;
+let currentStream = null;
+let scanCount = 0;
+let lastScannedCode = '';
+let lastScanTime = 0;
+let isScanning = false;
+let availableCameras = [];
+let currentCameraIndex = 0;
+const DEBOUNCE_TIME = 2000; // 2 secondes anti-doublon
+
+// Sons
+const successSound = new Audio('data:audio/wav;base64,UklGRi4AAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQoAAAAAAAAAAAAAAAA=');
+const errorSound = new Audio('data:audio/wav;base64,UklGRi4AAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQoAAAAAAAAAAAAAAAA=');
+
+function updateCameraMessage(message, type = 'info') {
+    const msgDiv = document.getElementById('camera-message');
+    if (!msgDiv) return;
+    
+    msgDiv.className = `alert alert-${type}`;
+    const icon = type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-triangle' : 'info-circle';
+    msgDiv.innerHTML = `<i class="fas fa-${icon}"></i> ${message}`;
+}
+
+function updateStatusBadge(status) {
+    const badge = document.getElementById('camera-status-badge');
+    if (!badge) return;
+    
+    if (status === 'running') {
+        badge.textContent = 'En cours';
+        badge.className = 'badge bg-success text-white';
+    } else if (status === 'error') {
+        badge.textContent = 'Erreur';
+        badge.className = 'badge bg-danger text-white';
+    } else {
+        badge.textContent = 'Arrêté';
+        badge.className = 'badge bg-warning text-dark';
+    }
+}
+
+function showSuccessFlash() {
+    const flash = document.getElementById('scan-success-flash');
+    if (!flash) return;
+    
+    flash.style.display = 'block';
+    flash.style.opacity = '0.5';
+    setTimeout(() => {
+        flash.style.opacity = '0';
+        setTimeout(() => flash.style.display = 'none', 300);
+    }, 150);
+}
+
+function playSound(success = true) {
+    if (!document.getElementById('sound-feedback')?.checked) return;
+    try {
+        (success ? successSound : errorSound).play().catch(() => {});
+    } catch (e) {}
+}
+
+async function startCamera() {
+    if (isScanning) return;
+
+    try {
+        updateCameraMessage('Initialisation de la caméra...', 'info');
+        
+        // Initialiser ZXing
+        if (!codeReader) {
+            codeReader = new ZXing.BrowserMultiFormatReader();
+        }
+
+        // Obtenir les caméras disponibles
+        const devices = await codeReader.listVideoInputDevices();
+        availableCameras = devices.filter(d => d.kind === 'videoinput');
+        
+        if (availableCameras.length === 0) {
+            throw new Error('Aucune caméra détectée');
+        }
+
+        // Bouton changement caméra
+        const btnSwitch = document.getElementById('btn-switch-camera');
+        if (availableCameras.length > 1) {
+            btnSwitch.style.display = 'inline-block';
+        } else {
+            btnSwitch.style.display = 'none';
+        }
+
+        // Démarrer le scan
+        const selectedDevice = availableCameras[currentCameraIndex]?.deviceId;
+        const videoElement = document.getElementById('camera-preview');
+        
+        await codeReader.decodeFromVideoDevice(selectedDevice, videoElement, (result, err) => {
+            if (result) {
+                handleBarcodeDetected(result.text);
+            }
+        });
+
+        currentStream = videoElement.srcObject;
+        isScanning = true;
+        
+        // Vérifier si flash disponible
+        checkTorchCapability();
+        
+        // UI Updates
+        document.getElementById('btn-start-camera').style.display = 'none';
+        document.getElementById('btn-stop-camera').style.display = 'inline-block';
+        document.getElementById('btn-toggle-torch').style.display = 'inline-block';
+        document.getElementById('scan-line-container').style.display = 'block';
+        
+        updateCameraMessage('Caméra active - Scannez un code-barres', 'success');
+        updateStatusBadge('running');
+        
+    } catch (error) {
+        console.error('Erreur caméra:', error);
+        updateCameraMessage(`Erreur: ${error.message}`, 'danger');
+        updateStatusBadge('error');
+    }
+}
+
+function stopCamera() {
+    if (!isScanning) return;
+
+    try {
+        if (codeReader) {
+            codeReader.reset();
+        }
+        
+        if (currentStream) {
+            currentStream.getTracks().forEach(track => track.stop());
+            currentStream = null;
+        }
+
+        const videoElement = document.getElementById('camera-preview');
+        if (videoElement) {
+            videoElement.srcObject = null;
+        }
+
+        isScanning = false;
+        
+        document.getElementById('btn-start-camera').style.display = 'inline-block';
+        document.getElementById('btn-stop-camera').style.display = 'none';
+        document.getElementById('btn-toggle-torch').style.display = 'none';
+        document.getElementById('scan-line-container').style.display = 'none';
+        
+        updateCameraMessage('Caméra arrêtée', 'info');
+        updateStatusBadge('stopped');
+        
+    } catch (error) {
+        console.error('Erreur arrêt caméra:', error);
+    }
+}
+
+async function switchCamera() {
+    if (!isScanning || availableCameras.length <= 1) return;
+    
+    currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
+    stopCamera();
+    await startCamera();
+}
+
+async function toggleTorch() {
+    if (!currentStream) return;
+
+    try {
+        const track = currentStream.getVideoTracks()[0];
+        const capabilities = track.getCapabilities();
+        
+        if (!capabilities.torch) {
+            updateCameraMessage('Flash non disponible sur cette caméra', 'warning');
+            return;
+        }
+
+        const currentSettings = track.getSettings();
+        await track.applyConstraints({
+            advanced: [{ torch: !currentSettings.torch }]
+        });
+        
+        const btn = document.getElementById('btn-toggle-torch');
+        btn.classList.toggle('btn-warning');
+        btn.classList.toggle('btn-light');
+        
+    } catch (error) {
+        console.error('Erreur flash:', error);
+        updateCameraMessage('Impossible d\'activer le flash', 'warning');
+    }
+}
+
+async function checkTorchCapability() {
+    if (!currentStream) return;
+    
+    try {
+        const track = currentStream.getVideoTracks()[0];
+        const capabilities = track.getCapabilities();
+        const btnTorch = document.getElementById('btn-toggle-torch');
+        
+        if (capabilities.torch) {
+            btnTorch.disabled = false;
+            btnTorch.title = 'Activer/Désactiver le flash';
+        } else {
+            btnTorch.disabled = true;
+            btnTorch.title = 'Flash non disponible';
+        }
+    } catch (e) {
+        document.getElementById('btn-toggle-torch').disabled = true;
+    }
+}
+
+async function handleBarcodeDetected(barcode) {
+    const now = Date.now();
+    
+    // Anti-doublon
+    if (barcode === lastScannedCode && (now - lastScanTime) < DEBOUNCE_TIME) {
+        return;
+    }
+
+    lastScannedCode = barcode;
+    lastScanTime = now;
+
+    // Validation format
+    if (barcode.length !== 28 || !/^[A-Za-z0-9]+$/.test(barcode)) {
+        playSound(false);
+        updateCameraMessage(`Code invalide: ${barcode.substring(0, 20)}... (doit être 28 caractères alphanumériques)`, 'warning');
+        return;
+    }
+
+    // Extraction
+    const codeArticle = barcode.substring(8, 18);
+    const lot = barcode.substring(18, 28);
+
+    // Feedback visuel
+    showSuccessFlash();
+    playSound(true);
+
+    // Incrémenter compteur
+    scanCount++;
+    document.getElementById('scan-count').textContent = `Scans: ${scanCount}`;
+
+    // Envoyer au serveur
+    try {
+        const autoWeight = document.getElementById('auto-weight')?.checked;
+        const formData = new FormData();
+        formData.append('barcode', barcode);
+        if (!autoWeight) {
+            formData.append('poids', '0');
+        }
+
+        const response = await fetch('{{ url_for("scan") }}', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (response.ok) {
+            // Afficher le dernier scan
+            document.getElementById('cam-last-lot').textContent = lot;
+            document.getElementById('cam-last-code').textContent = codeArticle;
+            document.getElementById('cam-last-weight').textContent = autoWeight ? 'Auto' : '-';
+            document.getElementById('camera-last-scan').style.display = 'block';
+            
+            updateCameraMessage(`✓ Lot ${lot} enregistré avec succès!`, 'success');
+            
+            // Mode non-continu: arrêt après scan
+            if (!document.getElementById('continuous-scan')?.checked) {
+                setTimeout(() => stopCamera(), 1500);
+            }
+        } else {
+            const text = await response.text();
+            playSound(false);
+            updateCameraMessage(`Erreur serveur: ${text.substring(0, 100)}`, 'danger');
+        }
+        
+    } catch (error) {
+        console.error('Erreur enregistrement:', error);
+        playSound(false);
+        updateCameraMessage(`Erreur réseau: ${error.message}`, 'danger');
+    }
+}
+
+function closeLastScanAlert() {
+    document.getElementById('camera-last-scan').style.display = 'none';
+}
+
+// Event Listeners
+document.getElementById('btn-start-camera')?.addEventListener('click', startCamera);
+document.getElementById('btn-stop-camera')?.addEventListener('click', stopCamera);
+document.getElementById('btn-toggle-torch')?.addEventListener('click', toggleTorch);
+document.getElementById('btn-switch-camera')?.addEventListener('click', switchCamera);
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+    stopCamera();
 });
 </script>
 {% endblock %}
