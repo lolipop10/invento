@@ -74,6 +74,8 @@
                         <option value="A_TRANSFORMER" {% if filter_decision == 'A_TRANSFORMER' %}selected{% endif %}>À Transformer</option>
                         <option value="A_RECYCLER" {% if filter_decision == 'A_RECYCLER' %}selected{% endif %}>À Recycler</option>
                         <option value="MAGASIN_NC" {% if filter_decision == 'MAGASIN_NC' %}selected{% endif %}>Magasin NC</option>
+                        <option value="MAGASIN_NC" {% if filter_decision == 'CONSOMMATION' %}selected{% endif %}>Consommation immédiate</option>
+
                     </select>
                 </div>
                 <div class="col-md-4">
@@ -246,6 +248,8 @@
                             <option value="A_TRANSFORMER">À Transformer</option>
                             <option value="A_RECYCLER">À Recycler</option>
                             <option value="MAGASIN_NC">Magasin NC</option>
+                            <option value="MAGASIN_NC">Consommation immédiate</option>
+
                         </select>
                     </div>
                 </div>
@@ -423,4 +427,5 @@ function confirmBatchUpdate() {
     return confirm(`Êtes-vous sûr de vouloir mettre à jour ${count} lot(s) ?`);
 }
 </script>
+
 {% endblock %}
