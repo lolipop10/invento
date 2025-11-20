@@ -156,7 +156,7 @@ def init_database():
                 code_article TEXT,
                 statut_qualite TEXT NOT NULL CHECK(statut_qualite IN ('CONFORME', 'NON_CONFORME', 'EN_ATTENTE')),
                 non_conformite TEXT,
-                decision_finale TEXT CHECK(decision_finale IN ('A_LIVRER', 'A_TRANSFORMER', 'A_RECYCLER', 'MAGASIN_NC', NULL)),
+                decision_finale TEXT CHECK(decision_finale IN ('A_LIVRER', 'A_TRANSFORMER', 'A_RECYCLER', 'MAGASIN_NC','CONSOMMATION', NULL)),
                 controleur_id INTEGER,
                 controleur_nom TEXT,
                 date_controle TEXT DEFAULT (datetime('now')),
